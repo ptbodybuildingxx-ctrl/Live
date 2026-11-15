@@ -1,0 +1,12 @@
+# Example only. Requires an approved public hostname and an installed Caddy server.
+# Never expose port 4173 directly. Replace this placeholder before deployment.
+live.example.invalid {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:4173
+    request_body {
+        max_size 550KB
+    }
+    header {
+        -Server
+    }
+}

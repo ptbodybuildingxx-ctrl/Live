@@ -1,0 +1,8 @@
+{
+  "name": "musclivo-live",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.13"},
+  "scripts": {"dev":"node server.mjs","start":"node server.mjs","start:release":"node --env-file=.env.production server.mjs --release","test":"node --check dist/app.js && node --check dist/i18n.js && node --check dist/policy.js && node --check server.mjs && node --check release.mjs && node --test tests/*.test.mjs","backup":"node backup.mjs"}
+}
