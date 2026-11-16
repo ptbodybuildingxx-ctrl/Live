@@ -1,7 +1,7 @@
 // Original local metadata. Media is intentionally not supplied or hotlinked.
 export const equipment=['bodyweight','dumbbell','barbell','machine'];
-export const muscles=['chest','back','shoulders','arms','legs','core','cardio'];
-export const patterns=['horizontalPush','verticalPush','fly','horizontalPull','verticalPull','pullover','shrug','lateralRaise','frontRaise','mobility','rearDelt','curl','triceps','forearm','squat','hinge','lunge','legExtension','legCurl','calf','hip','coreFlexion','coreStability','coreRotation','conditioning','locomotion','cyclicCardio'];
+export const muscles=['chest','back','shoulders','arms','legs','core','cardio','stretch'];
+export const patterns=['horizontalPush','verticalPush','fly','horizontalPull','verticalPull','pullover','shrug','lateralRaise','frontRaise','mobility','rearDelt','curl','triceps','forearm','squat','hinge','lunge','legExtension','legCurl','calf','hip','coreFlexion','coreStability','coreRotation','conditioning','locomotion','cyclicCardio','staticStretch','dynamicStretch','warmup','cooldown'];
 export const levels=['beginner','intermediate','advanced'];
 export const secondaryGroups=(pattern,muscle)=>({
   horizontalPush:['shoulders','arms'],verticalPush:['arms','core'],horizontalPull:['back','arms'],verticalPull:['arms','back'],fly:['shoulders'],hinge:['back','core'],squat:['core','legs'],lunge:['core'],triceps:['shoulders'],curl:['arms'],conditioning:['core'],locomotion:['legs'],cyclicCardio:['legs']
@@ -159,9 +159,61 @@ elliptical|machine|cyclicCardio|beginner|Elliptical trainer|جهاز إليبت�
 rowing-machine|machine|cyclicCardio|intermediate|Rowing machine|جهاز تجديف|Roddmaskin
 stair-climber|machine|cyclicCardio|intermediate|Stair climber|جهاز صعود الدرج|Trappmaskin`
 };
-export const seedExercises=Object.freeze(Object.entries(source).flatMap(([muscle,rows])=>rows.split('\n').map(row=>{
-  const [id,equipment,pattern,level,en,ar,sv]=row.split('|');
-  return Object.freeze({id,muscle,secondary:secondaryGroups(pattern,muscle),equipment,pattern,level,names:{en,ar,sv},archived:false,notes:{en:'',ar:'',sv:''},media:null});
-})));
+const extra={
+chest:`archer-pushup|bodyweight|horizontalPush|advanced|Archer push-up|ضغط الرامي|Archer-armhävning
+db-squeeze-press|dumbbell|horizontalPush|intermediate|Dumbbell squeeze press|ضغط دمبل متلاصق|Hantelpress med ihoppressade hantlar
+single-db-bench|dumbbell|horizontalPush|intermediate|Single-arm dumbbell bench press|ضغط صدر دمبل بذراع واحدة|Enarms hantelpress
+smith-bench|machine|horizontalPush|beginner|Smith machine bench press|بنش جهاز سميث|Bänkpress i Smithmaskin
+cable-high-fly|machine|fly|intermediate|High-to-low cable fly|تفتيح كيبل تنازلي|Kabelcross uppifrån`,
+back:`scapular-pullup|bodyweight|verticalPull|intermediate|Scapular pull-up|عقلة لوح الكتف|Skulderbladschins
+db-elbow-out-row|dumbbell|horizontalPull|intermediate|Elbows-out dumbbell row|سحب دمبل بمرفقين للخارج|Hantelrodd med breda armbågar
+meadows-row|barbell|horizontalPull|advanced|Meadows row|سحب ميدوز|Meadowsrodd
+cable-single-row|machine|horizontalPull|beginner|Single-arm cable row|سحب كيبل بذراع واحدة|Enarms kabelrodd
+machine-pullover|machine|pullover|beginner|Machine pullover|سحب ظهر بول أوفر جهاز|Pullover i maskin`,
+shoulders:`db-scaptation|dumbbell|lateralRaise|beginner|Dumbbell scaption|رفع دمبل بمستوى لوح الكتف|Scaption med hantlar
+half-kneel-db-press|dumbbell|verticalPush|intermediate|Half-kneeling dumbbell press|ضغط كتف دمبل نصف ركوع|Hantelpress i halvknästående
+bb-front-raise|barbell|frontRaise|intermediate|Barbell front raise|رفرفة أمامية بار|Frontlyft med skivstång
+cable-front-raise|machine|frontRaise|beginner|Cable front raise|رفرفة أمامية كيبل|Frontlyft i kabel
+cable-rear-fly|machine|rearDelt|intermediate|Cable reverse fly|رفرفة خلفية كيبل|Omvänd kabelcross`,
+arms:`db-zottman|dumbbell|curl|intermediate|Zottman curl|بايسبس زوتمان|Zottmancurl
+db-cross-hammer|dumbbell|curl|beginner|Cross-body hammer curl|هامر دمبل متقاطع|Hammarcurl över kroppen
+bb-wrist-curl|barbell|forearm|beginner|Barbell wrist curl|ثني معصم بالبار|Handledscurl med skivstång
+cable-overhead-triceps|machine|triceps|intermediate|Cable overhead extension|ترايسبس كيبل فوق الرأس|Tricepspress över huvudet i kabel
+cable-reverse-pushdown|machine|triceps|intermediate|Reverse-grip pushdown|ترايسبس كيبل قبضة عكسية|Triceps pushdown med omvänt grepp`,
+legs:`cossack-squat|bodyweight|squat|intermediate|Cossack squat|سكوات جانبي قوزاق|Cossack squat
+db-single-rdl|dumbbell|hinge|intermediate|Single-leg dumbbell Romanian deadlift|ديدلفت روماني دمبل برجل واحدة|Rumänska enbensmarklyft med hantlar
+bb-zercher|barbell|squat|advanced|Zercher squat|سكوات زيرشر|Zercherböj
+hip-adductor|machine|hip|beginner|Hip adduction machine|جهاز التقريب للفخذ|Höftadduktion i maskin
+cable-glute-kickback|machine|hip|beginner|Cable glute kickback|رفس خلفي للأرداف كيبل|Glute kickback i kabel`,
+stretch:`doorway-chest|bodyweight|staticStretch|beginner|Doorway chest stretch|إطالة الصدر عند الباب|Bröststretch i dörröppning|chest,shoulders
+cross-body-shoulder|bodyweight|staticStretch|beginner|Cross-body shoulder stretch|إطالة الكتف عبر الجسم|Axelstretch över kroppen|shoulders
+overhead-triceps-stretch|bodyweight|staticStretch|beginner|Overhead triceps stretch|إطالة الترايسبس فوق الرأس|Tricepsstretch över huvudet|arms
+seated-hamstring-stretch|bodyweight|staticStretch|beginner|Seated hamstring stretch|إطالة خلف الفخذ جالسًا|Sittande hamstringsstretch|legs
+standing-quad-stretch|bodyweight|staticStretch|beginner|Standing quadriceps stretch|إطالة أمام الفخذ واقفًا|Stående lårstretch|legs
+wall-calf-stretch|bodyweight|staticStretch|beginner|Wall calf stretch|إطالة السمانة على الحائط|Vadstretch mot vägg|legs
+half-kneel-hip-stretch|bodyweight|staticStretch|beginner|Half-kneeling hip flexor stretch|إطالة مثنيات الورك نصف ركوع|Höftböjarstretch i halvknästående|legs
+figure-four|bodyweight|staticStretch|beginner|Supine figure-four stretch|إطالة الأرداف بشكل أربعة|Liggande fyrastretch|legs
+butterfly-stretch|bodyweight|staticStretch|beginner|Butterfly stretch|إطالة الفراشة|Fjärilsstretch|legs
+arm-circles|bodyweight|dynamicStretch|beginner|Arm circles|دوائر الذراعين|Armcirklar|shoulders
+leg-swing-front|bodyweight|dynamicStretch|beginner|Forward leg swings|تأرجح الساق أماميًا|Bensving framåt|legs
+leg-swing-side|bodyweight|dynamicStretch|beginner|Lateral leg swings|تأرجح الساق جانبيًا|Bensving åt sidan|legs
+walking-lunge-rotation|bodyweight|dynamicStretch|intermediate|Walking lunge with rotation|اندفاع مشي مع دوران|Gående utfall med rotation|legs,core
+dynamic-inchworm|bodyweight|dynamicStretch|intermediate|Inchworm|مشي اليدين من الوقوف|Inchworm|legs,core
+cat-cow|bodyweight|mobility|beginner|Cat-cow mobility|حركة القطة والبقرة|Katt-ko|back,core
+open-book|bodyweight|mobility|beginner|Open book rotation|دوران الكتاب المفتوح|Open book-rotation|back,shoulders
+ankle-rocks|bodyweight|mobility|beginner|Knee-to-wall ankle rocks|تحريك الكاحل نحو الحائط|Knä mot vägg|legs
+hip-90-90|bodyweight|mobility|intermediate|90/90 hip switches|تبديل الورك 90/90|90/90-höftrotation|legs
+thoracic-extension|bodyweight|mobility|beginner|Seated thoracic extension|تمديد الصدر والظهر جالسًا|Bröstryggsextension sittande|back
+scapular-wall-circles|bodyweight|mobility|beginner|Scapular wall circles|دوائر لوح الكتف على الحائط|Skulderbladscirklar mot vägg|shoulders
+march-in-place|bodyweight|warmup|beginner|March in place|مشي في المكان|Marsch på stället|legs
+heel-to-toe-rock|bodyweight|warmup|beginner|Heel-to-toe rocks|تأرجح الكعب والأصابع|Häl-tå-gungning|legs
+side-step-warmup|bodyweight|warmup|beginner|Side-step warm-up|خطوات جانبية للإحماء|Sidosteg som uppvärmning|legs
+child-pose|bodyweight|cooldown|beginner|Child's pose|وضعية الطفل|Barnets position|back
+supine-knee-hug|bodyweight|cooldown|beginner|Supine knee hug|ضم الركبتين مستلقيًا|Liggande knäkram|legs,back`
+};
+export const seedExercises=Object.freeze([source,extra].flatMap(set=>Object.entries(set).flatMap(([muscle,rows])=>rows.split('\n').map(row=>{
+  const [id,equipment,pattern,level,en,ar,sv,targets]=row.split('|');
+  return Object.freeze({id,muscle,secondary:targets?targets.split(','):secondaryGroups(pattern,muscle),equipment,pattern,level,names:{en,ar,sv},archived:false,notes:{en:'',ar:'',sv:''},media:null});
+}))));
 export const exerciseName=(row,lang)=>row?.names?.[lang]||row?.names?.en||row?.id||'';
-export const alternatives=(catalog,row)=>catalog.filter(x=>!x.archived&&x.id!==row.id&&x.muscle===row.muscle&&x.pattern===row.pattern);
+export const alternatives=(catalog,row)=>catalog.filter(x=>!x.archived&&x.id!==row.id&&x.muscle===row.muscle&&x.pattern===row.pattern&&(row.muscle!=='stretch'||row.secondary?.some(m=>x.secondary?.includes(m))));

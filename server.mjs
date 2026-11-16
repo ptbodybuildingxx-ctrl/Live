@@ -12,7 +12,7 @@ import {coachingView,coachingAction,coachingExport,removeCoaching,revokeCoaching
 import {clubOpsView,clubOpsAction,clubOpsExport,removeClubOps,revokeMembership} from './club-ops.mjs';
 import {clubChatView,clubChatAction,clubChatExport,removeClubChat,revokeClubChatGrant,cancelClubChatPairInvites,reportPrivateMessage} from './club-chat.mjs';
 import {programsView,programsAction,programsExport,removePrograms,clearRehab,revokeProgramGrant} from './programs.mjs';
-import {trainingView,trainingAction,trainingExport,removeTraining,clearTraining} from './training.mjs';
+import {trainingView,trainingAction,trainingExport,removeTraining,clearTraining,trainingMediaRow,trainingAttachMedia} from './training.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const uuid = randomUUID;
@@ -231,6 +231,7 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
   if(production&&(!release.origin?.startsWith('https://')||typeof release.mailer!=='function'||!emailValid(release.adminEmail||'')||typeof release.adminPassword!=='string'||release.adminPassword.length<16||!emailValid(release.contact||'')))throw new Error('Release blocked: incomplete configuration');
   if(dbPath!==':memory:')mkdirSync(dirname(dbPath),{recursive:true,mode:0o700});
   const db=new DatabaseSync(dbPath);
+  db.exec('CREATE TABLE IF NOT EXISTS exercise_media (exercise_id TEXT NOT NULL, slot TEXT NOT NULL, mime TEXT NOT NULL, data BLOB NOT NULL, sha TEXT NOT NULL, PRIMARY KEY(exercise_id,slot));');
   db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL); CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id); CREATE TABLE IF NOT EXISTS auth_codes (user_id TEXT NOT NULL, purpose TEXT NOT NULL, digest TEXT NOT NULL, expires INTEGER NOT NULL, PRIMARY KEY(user_id,purpose));');
   const read=()=>{const s=JSON.parse(db.prepare('SELECT data FROM state WHERE id=1').get().data);return production?s:ensureIdentity(s)};
   const save=s=>{
@@ -281,7 +282,7 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
       if(url.pathname.startsWith('/api/')){
         const ip=req.socket.remoteAddress||'unknown';
         rate('ip:'+ip,production?1500:3000,60000);
-        if(req.method==='POST'){assert(production?req.headers.origin===release.origin:(!req.headers.origin||req.headers.origin===`http://${req.headers.host}`),'Invalid origin');assert((req.headers['content-type']||'').includes('application/json'),'JSON required',415)}
+        if(req.method==='POST'){assert(production?req.headers.origin===release.origin:(!req.headers.origin||req.headers.origin===`http://${req.headers.host}`),'Invalid origin');if(url.pathname!=='/api/training-media')assert((req.headers['content-type']||'').includes('application/json'),'JSON required',415)}
         if(url.pathname==='/api/config'&&req.method==='GET')return json(res,{production,demo:!production,policyVersion:POLICY_VERSION,contact:production?release.contact:null,features:flags});
         if(url.pathname==='/api/health'&&req.method==='GET')return json(res,{ok:true});
         const id=session(req);
@@ -320,6 +321,26 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
         if(url.pathname==='/api/logout'&&req.method==='POST'){revoke(req);clearCookie(res);return json(res,{ok:true});}
         const s=read(),me=profile(s,id);assert(id&&me&&!me.suspended&&(!production||me.emailVerified===true),'Sign in required',401);
         rate('user:'+id,production?120:500,60000);
+        if(url.pathname==='/api/training-media'){
+          assert(!production&&s.identity,'Local training unavailable',404);
+          const exerciseId=url.searchParams.get('exercise'),slot=url.searchParams.get('slot');
+          if(req.method==='POST'){
+            trainingMediaRow(s,id,exerciseId,slot,true);rate('training-media:'+id,30,60000);
+            const mime=req.headers['content-type'],isVideo=slot==='video',max=isVideo?8*1024*1024:2*1024*1024,allowed=isVideo?['video/mp4','video/webm']:['image/jpeg','image/png','image/webp'];assert(allowed.includes(mime),'Unsupported media type',415);
+            assert(!req.headers['content-length']||Number(req.headers['content-length'])<=max,'Media too large',413);let size=0;const chunks=[];for await(const c of req){size+=c.length;assert(size<=max,'Media too large',413);chunks.push(c)}const data=Buffer.concat(chunks);
+            const valid=mime==='image/png'?data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):mime==='image/jpeg'?data[0]===255&&data[1]===216&&data[2]===255:mime==='image/webp'?data.toString('ascii',0,4)==='RIFF'&&data.toString('ascii',8,12)==='WEBP':mime==='video/mp4'?data.toString('ascii',4,8)==='ftyp':data.subarray(0,4).equals(Buffer.from([26,69,223,163]));assert(size>=16&&valid,'Invalid media signature',415);
+            const fresh=read();assert(session(req)===id&&profile(fresh,id)&&!profile(fresh,id).suspended,'Sign in required',401);const sha=digest(data);trainingAttachMedia(fresh,id,exerciseId,slot,{mime,sha,size});
+            const used=db.prepare('SELECT COALESCE(SUM(length(data)),0) AS total FROM exercise_media WHERE NOT (exercise_id=? AND slot=?)').get(exerciseId,slot).total;assert(used+size<=512*1024*1024,'Local media quota reached',429);
+            db.exec('BEGIN');try{db.prepare('INSERT INTO exercise_media VALUES (?,?,?,?,?) ON CONFLICT(exercise_id,slot) DO UPDATE SET mime=excluded.mime,data=excluded.data,sha=excluded.sha').run(exerciseId,slot,mime,data,sha);save(fresh);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}return json(res,snapshot(fresh,id,flags));
+          }
+          if(req.method==='GET'){
+            const {asset}=trainingMediaRow(s,id,exerciseId,slot);assert(asset,'Media not found',404);const row=db.prepare('SELECT mime,data,sha FROM exercise_media WHERE exercise_id=? AND slot=?').get(exerciseId,slot);assert(row&&row.sha===asset.sha,'Media not found',404);
+            const bytes=Buffer.from(row.data);let from=0,to=bytes.length-1,status=200;const headers={'Content-Type':row.mime,'Cache-Control':'no-store','Accept-Ranges':'bytes','Cross-Origin-Resource-Policy':'same-origin'};
+            if(req.headers.range){const m=/^bytes=(\d+)-(\d*)$/.exec(req.headers.range);if(!m){res.writeHead(416,{'Content-Range':`bytes */${bytes.length}`});return res.end()}from=Number(m[1]);to=m[2]?Math.min(Number(m[2]),to):to;if(from>to){res.writeHead(416,{'Content-Range':`bytes */${bytes.length}`});return res.end()}status=206;headers['Content-Range']=`bytes ${from}-${to}/${bytes.length}`}
+            headers['Content-Length']=to-from+1;res.writeHead(status,headers);return res.end(bytes.subarray(from,to+1));
+          }
+          return json(res,{error:'Not found'},404);
+        }
         if(url.pathname==='/api/state'&&req.method==='GET'){if(me.lastActive<now()-60000){me.lastActive=now();s.stories=s.stories.filter(x=>x.at>now()-DAY);save(s)}return json(res,snapshot(s,id,flags));}
         if(url.pathname==='/api/account'&&req.method==='POST'){
           rate('account:'+id,8,600000);

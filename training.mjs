@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {activeContext,can} from './identity.mjs';
-import {seedExercises,equipment,muscles,patterns,levels,secondaryGroups} from './dist/core/exercise-catalog.js';
+import {seedExercises,equipment,muscles,patterns,levels,secondaryGroups,alternatives} from './dist/core/exercise-catalog.js';
 
 export const groupTypes=['standard','drop','superset','triset','giant','circuit','restPause','pyramid','cluster','tempo','amrap','custom'];
 const FAIL=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
@@ -23,12 +23,29 @@ const coachLink=(s,id,l)=>coach(s,id)&&l?.coach===id&&activeLink(s,l);
 const planLink=(s,p)=>links(s).find(l=>l.id===p.linkId&&l.member===p.owner&&l.coach===p.author);
 const mayEdit=(s,id,p)=>own(s,id)&&(p.owner===id||coachLink(s,id,planLink(s,p)));
 const day=()=>new Date().toISOString().slice(0,10);
-const catalog=s=>{const edits=new Map(view(s).catalog.map(r=>[r.id,r]));return [...seedExercises.map(r=>edits.get(r.id)||r),...view(s).catalog.filter(r=>!seedExercises.some(e=>e.id===r.id))]};
+const seedIds=new Set(seedExercises.map(r=>r.id));
+const catalog=s=>{const edits=new Map(view(s).catalog.map(r=>[r.id,r]));return [...seedExercises.map(r=>edits.get(r.id)||r),...view(s).catalog.filter(r=>!seedIds.has(r.id))]};
 const publicPlan=({owner,author,...p})=>({...p,assigned:!!p.linkId});
 const audit=(s,id,operation,target)=>{const a=store(s).audit;a.unshift({id:randomUUID(),actor:id,operation,target,at:Date.now()});a.splice(1000)};
 function localized(value,max,optional=false){need(value&&typeof value==='object'&&!Array.isArray(value),'Translations required');return Object.fromEntries(['ar','en','sv'].map(l=>[l,text(value[l],max,optional)]))}
+const blank=()=>({ar:'',en:'',sv:''});
+export const mediaSlots=['start','end','video'];
+const contentOf=r=>r.content||{status:'draft',mistakes:blank(),safety:blank(),assets:{},reviewedAt:null};
+function putCatalog(s,row){const d=store(s);d.catalog=d.catalog.filter(r=>r.id!==row.id);d.catalog.push(row)}
+export function trainingMediaRow(s,id,exerciseId,slot,write=false){
+  if(write)need(admin(s,id),'Catalog administration required',403);
+  need(mediaSlots.includes(slot),'Invalid media slot');const row=catalog(s).find(r=>r.id===exerciseId);need(row,'Exercise not found',404);
+  const content=contentOf(row);if(!write)need(admin(s,id)||(!row.archived&&content.status==='published'),'Media not found',404);
+  return {row,content,asset:content.assets[slot]};
+}
+export function trainingAttachMedia(s,id,exerciseId,slot,asset){
+  const {row,content}=trainingMediaRow(s,id,exerciseId,slot,true);need(row.media?.rights&&row.media?.reference,'Rights and source required');
+  putCatalog(s,{...row,content:{...content,status:'draft',reviewedAt:null,assets:{...content.assets,[slot]:asset}}});audit(s,id,'mediaUpload',row.id);
+}
 function catalogBody(b){
-  return {names:localized(b.names,100),notes:localized(b.notes,1000,true),equipment:choice(b.equipment,equipment),muscle:choice(b.muscle,muscles),pattern:choice(b.pattern,patterns),level:choice(b.level,levels),secondary:secondaryGroups(b.pattern,b.muscle),
+  const muscle=choice(b.muscle,muscles),pattern=choice(b.pattern,patterns);let secondary=secondaryGroups(pattern,muscle);
+  if(muscle==='stretch'){need(['staticStretch','dynamicStretch','mobility','warmup','cooldown'].includes(pattern),'Invalid stretch category');need(Array.isArray(b.secondary)&&b.secondary.length>0&&b.secondary.length<=7&&b.secondary.every(m=>muscles.includes(m)&&m!=='stretch'),'Target muscles required');secondary=[...new Set(b.secondary)]}
+  return {names:localized(b.names,100),notes:localized(b.notes,1000,true),equipment:choice(b.equipment,equipment),muscle,pattern,level:choice(b.level,levels),secondary,
     // A rights note is metadata only; no external fetches or arbitrary media URLs.
     media:b.media===null||b.media===undefined?null:{rights:text(b.media.rights,200),reference:text(b.media.reference,200)}};
 }
@@ -66,7 +83,7 @@ function workoutSteps(s,p,week,trainingDay){
     const loads=b.method==='drop'?[item.kg,...item.weights]:b.method==='pyramid'?[item.weights[round-1]]:Array(item.segments).fill(item.kg);
     for(const [stage,kg] of loads.entries())for(const side of item.side==='each'?['left','right']:['both']){
       const inter=stage<loads.length-1&&side!=='left';
-      steps.push({blockId:b.id,itemIndex,method:b.method,exerciseId:ex.id,names:ex.names,muscle:ex.muscle,pattern:ex.pattern,equipment:ex.equipment,round,stage:stage+1,side,kg,reps:item.reps,duration:item.duration,rpe:item.rpe,rir:item.rir,tempo:item.tempo,warmup:b.warmup,rest:side==='left'?0:inter?item.segmentRest:itemIndex===b.items.length-1?b.rest:item.rest});
+      steps.push({blockId:b.id,itemIndex,method:b.method,exerciseId:ex.id,names:ex.names,muscle:ex.muscle,secondary:ex.secondary,pattern:ex.pattern,equipment:ex.equipment,round,stage:stage+1,side,kg,reps:item.reps,duration:item.duration,rpe:item.rpe,rir:item.rir,tempo:item.tempo,warmup:b.warmup,rest:side==='left'?0:inter?item.segmentRest:itemIndex===b.items.length-1?b.rest:item.rest});
     }
   }
   need(steps.length>0&&steps.length<=300,'Workout must contain 1–300 logged steps');return steps;
@@ -113,7 +130,7 @@ export function trainingView(s,id){
   const settings=d.settings[id]||{progression:false};
   const progress=enabled?stats(s,id):null;
   const suggestions=enabled&&settings.progression?d.plans.filter(p=>p.owner===id&&!p.archived).flatMap(p=>p.blocks.flatMap(b=>b.items.flatMap((item,i)=>{const a=suggestion(s,id,p,b.id,i,progress);return a&&a.kg>item.kg?[{planId:p.id,...a}]:[]}))):[];
-  return {catalog:catalog(s).filter(r=>a||!r.archived),canAdmin:a,enabled,canCoach:c,plans,settings:enabled?settings:null,suggestions,
+  return {catalog:catalog(s).filter(r=>a||!r.archived).map(r=>{const content=contentOf(r);return a||content.status==='published'?{...r,content}:{...r,notes:blank(),media:null,content:{status:'draft',assets:{}}}}),canAdmin:a,enabled,canCoach:c,plans,settings:enabled?settings:null,suggestions,
     links:c?links(s).filter(l=>coachLink(s,id,l)&&s.wellness?.enabled.includes(l.member)).map(l=>({id:l.id,name:profile(s,l.member)?.name})):[],
     ...(enabled?{sessions:ownSessions(s,id).map(({owner,...r})=>r),progress}:{}),
     ...(c?{shared:links(s).filter(l=>coachLink(s,id,l)&&l.shareWorkout===true&&s.wellness?.enabled.includes(l.member)).map(l=>{const {adherence,...progress}=stats(s,l.member);return {linkId:l.id,name:profile(s,l.member)?.name,progress}})}:{}),
@@ -121,12 +138,18 @@ export function trainingView(s,id){
 }
 export function trainingAction(s,id,b){
   const d=store(s),op=b.operation;
-  if(['catalogCreate','catalogUpdate','catalogArchive','catalogRestore'].includes(op)){
+  if(['catalogCreate','catalogUpdate','catalogArchive','catalogRestore','contentSubmit','contentPublish','contentReturn'].includes(op)){
     need(admin(s,id),'Catalog administration required',403);
-    if(op==='catalogCreate'){need(catalog(s).length<500,'Catalog limit',429);const row={id:randomUUID(),...catalogBody(b),archived:false};d.catalog.push(row);audit(s,id,op,row.id);return}
+    const fields=b=>({mistakes:localized(b.mistakes??blank(),1000,true),safety:localized(b.safety??blank(),1000,true)});
+    if(op==='catalogCreate'){need(catalog(s).length<2000,'Catalog limit',429);const row={id:randomUUID(),...catalogBody(b),archived:false,content:{...contentOf({}),...fields(b)}};d.catalog.push(row);audit(s,id,op,row.id);return}
     const row=catalog(s).find(r=>r.id===b.id);need(row,'Exercise not found',404);
-    const update=op==='catalogUpdate'?{...row,...catalogBody(b)}:{...row,archived:op==='catalogArchive'};
-    d.catalog=d.catalog.filter(r=>r.id!==row.id);d.catalog.push(update);audit(s,id,op,row.id);return;
+    const content=contentOf(row);let update;
+    if(op==='catalogUpdate')update={...row,...catalogBody(b),content:{...content,...fields(b),status:'draft',reviewedAt:null}};
+    else if(op==='contentSubmit'){need(content.status==='draft'&&!row.archived,'Draft required',409);need(row.media?.rights&&row.media?.reference&&mediaSlots.every(slot=>content.assets[slot])&&['ar','en','sv'].every(l=>row.notes[l]&&content.mistakes[l]&&content.safety[l]),'Complete reviewed content, rights and media required');update={...row,content:{...content,status:'review'}}}
+    else if(op==='contentPublish'){need(content.status==='review'&&!row.archived&&b.confirm===true,'Specialist review confirmation required',403);update={...row,content:{...content,status:'published',reviewedAt:Date.now()}}}
+    else if(op==='contentReturn'){update={...row,content:{...content,status:'draft',reviewedAt:null}}}
+    else update={...row,archived:op==='catalogArchive'};
+    putCatalog(s,update);audit(s,id,op,row.id);return;
   }
   need(own(s,id),'Personal test records required',403);
   if(op==='settings'){need(typeof b.progression==='boolean','Invalid choice');d.settings[id]={progression:b.progression};return}
@@ -175,8 +198,8 @@ export function trainingAction(s,id,b){
   need(b.index===r.cursor&&r.cursor<r.steps.length,'Workout step changed',409);
   const step=r.steps[r.cursor];
   if(op==='replace'){
-    const ex=catalog(s).find(x=>x.id===b.exerciseId&&!x.archived);need(ex&&ex.muscle===step.muscle&&ex.pattern===step.pattern&&ex.id!==step.exerciseId,'Select matching movement alternative');
-    for(let i=r.cursor;i<r.steps.length;i++){const row=r.steps[i];if(row.blockId===step.blockId&&row.itemIndex===step.itemIndex){Object.assign(row,{exerciseId:ex.id,names:ex.names,equipment:ex.equipment,kg:0})}}return;
+    const ex=alternatives(catalog(s),{...step,id:step.exerciseId}).find(x=>x.id===b.exerciseId);need(ex,'Select matching movement alternative');
+    for(let i=r.cursor;i<r.steps.length;i++){const row=r.steps[i];if(row.blockId===step.blockId&&row.itemIndex===step.itemIndex){Object.assign(row,{exerciseId:ex.id,names:ex.names,secondary:ex.secondary,equipment:ex.equipment,kg:0})}}return;
   }
   if(op==='skip'||op==='log'){
     const log=op==='skip'?{index:r.cursor,skipped:true,at:Date.now()}:{index:r.cursor,skipped:false,kg:number(b.kg,0,1000),reps:number(b.reps,0,500,true),duration:number(b.duration??0,0,7200,true),rpe:b.rpe==null?null:number(b.rpe,1,10),rir:b.rir==null?null:number(b.rir,0,10),at:Date.now()};

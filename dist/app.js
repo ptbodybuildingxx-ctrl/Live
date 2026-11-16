@@ -102,8 +102,9 @@ document.addEventListener('click',async e=>{
   switch(action){
     case 'trainingUI':if(state?.training&&!config.production){trainingUI(state.me.id,op,id);render()}break;
     case 'trainingAction':if(state?.training&&!config.production){
-      const confirmOps=['catalogArchive','planArchive','blockRemove','cancel','sessionDelete','progressApply'];
+      const confirmOps=['catalogArchive','planArchive','blockRemove','cancel','sessionDelete','progressApply','contentReturn'];
       if(confirmOps.includes(op)&&!confirm(t('train_confirm')))break;
+      if(op==='contentPublish'&&!confirm(t('train_specialistConfirm')))break;
       const ok=await act('training',{operation:op,id,sessionId:id,blockId:el.dataset.block,direction:Number(el.dataset.direction),index:Number(el.dataset.index),itemIndex:Number(el.dataset.item),kg:Number(el.dataset.kg),progression:el.dataset.progression==='true',confirm:true});
       if(ok&&op==='planCopy'){trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);render()}
     }break;
@@ -187,10 +188,17 @@ document.addEventListener('submit',async e=>{
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
   if(type==='trainingFilter'){if(state?.training&&!config.production){trainingUI(state.me.id,'filter',{query:String(data.query||'').slice(0,100),equipment:fd.getAll('equipment'),muscle:data.muscle,level:data.level,secondary:data.secondary});render()}return}
+  if(type==='trainingMedia'){
+    if(busy||config.production||!state?.training?.canAdmin)return;
+    if(!confirm(t('train_mediaUploadConfirm')))return;busy=true;const revision=++stateRevision;
+    try{let file=data.file;if(!file?.size)throw new Error(t('error'));if(data.slot!=='video'){if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error(t('error'));const encoded=await imageData(file);file=new Blob([Uint8Array.from(atob(encoded.split(',')[1]),c=>c.charCodeAt(0))],{type:'image/jpeg'})}else if(file.size>8*1024*1024)throw new Error(t('train_mediaUploadHint'));
+      const response=await fetch('/api/training-media?exercise='+encodeURIComponent(data.id)+'&slot='+encodeURIComponent(data.slot),{method:'POST',headers:{'Content-Type':file.type},body:file,credentials:'same-origin'});const next=await response.json();if(!response.ok)throw new Error(next.error||t('error'));if(revision===stateRevision){state=next;render();toast(t('success'))}
+    }catch(err){toast(err.message||t('error'))}finally{busy=false}return;
+  }
   if(type==='training'){
     if(!state?.training||config.production)return;
     const op=data.operation;if(op==='planAssign'&&!confirm(t('train_assignConfirm')))return;
-    const ok=await act('training',trainingPayload(data));
+    const ok=await act('training',trainingPayload({...data,secondary:fd.getAll('target')}));
     if(ok){if(op==='start')trainingUI(state.me.id,'tab','live');else if(op==='finish')trainingUI(state.me.id,'tab','progress');else if(op==='planCreate')trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);else if(['blockAdd','blockUpdate'].includes(op))trainingUI(state.me.id,'block','');else if(['catalogCreate','catalogUpdate'].includes(op))trainingUI(state.me.id,'edit','');render()}return;
   }
   if(type==='programFilter'){if(state&&!config.production){programFilter(state.me.id,data);render()}return}

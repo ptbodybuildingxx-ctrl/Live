@@ -23,26 +23,68 @@ const withApp=async run=>{
   try{await run({req,login,act,train,view,enable,change,db,base})}finally{await new Promise(r=>server.close(r));db.close()}
 };
 
-test('150 distinct exercises, 4 equipment categories, multilingual catalog and matching alternatives',()=>{
-  assert.equal(seedExercises.length,150);assert.equal(new Set(seedExercises.map(x=>x.id)).size,150);
-  const counts=Object.fromEntries(muscles.map(m=>[m,seedExercises.filter(x=>x.muscle===m).length]));assert.deepEqual(counts,{chest:20,back:25,shoulders:20,arms:25,legs:30,core:15,cardio:15});
+test('200 distinct exercises, 25 stretch movements, 4 equipment categories and multilingual catalog',()=>{
+  assert.equal(seedExercises.length,200);assert.equal(new Set(seedExercises.map(x=>x.id)).size,200);
+  const counts=Object.fromEntries(muscles.map(m=>[m,seedExercises.filter(x=>x.muscle===m).length]));assert.deepEqual(counts,{chest:25,back:30,shoulders:25,arms:30,legs:35,core:15,cardio:15,stretch:25});
+  const stretch=seedExercises.filter(x=>x.muscle==='stretch');assert(stretch.every(x=>x.secondary.length));assert.equal(new Set(stretch.map(x=>x.pattern)).size,5);assert(alternatives(seedExercises,stretch[3]).every(x=>x.secondary.some(m=>stretch[3].secondary.includes(m))));
   for(const row of seedExercises){assert(equipment.includes(row.equipment));assert(patterns.includes(row.pattern));assert(levels.includes(row.level));assert(langs.every(l=>row.names[l].length>0));assert(row.secondary.every(m=>muscles.includes(m)&&m!==row.muscle))}
   const db=seedExercises.find(r=>r.id==='db-bench'),others=alternatives(seedExercises,db);assert(others.some(x=>x.equipment==='bodyweight'));assert(others.some(x=>x.equipment==='machine'));assert(others.every(x=>x.muscle===db.muscle&&x.pattern===db.pattern&&x.id!==db.id));
   for(const key of [...equipment,...muscles,...patterns,...levels,...groupTypes])for(const l of langs)assert.notEqual(tr('train_'+key,l),'train_'+key);
 });
+
+test('catalog supports more than 1,000 entries with a paged browser view',async()=>withApp(async({login,view,db})=>{
+  const admin=await login('admin'),s=JSON.parse(db.prepare('SELECT data FROM state WHERE id=1').get().data);
+  const example=seedExercises[0];s.training={catalog:Array.from({length:900},(_,i)=>({...example,id:'fixture-'+i,names:{en:'Fixture '+i,ar:'اختبار '+i,sv:'Test '+i}})),plans:[],sessions:[],settings:{},audit:[]};
+  db.prepare('UPDATE state SET data=? WHERE id=1').run(JSON.stringify(s));
+  const state=(await view(admin)).data;assert.equal(state.training.catalog.length,1100);
+  resetTrainingUI();const h=v=>String(v??'');const html=trainingPage({state,t:k=>tr(k,'en'),h,btn:(x,a,attrs)=>`<button data-action="${a}" ${attrs}>${x}</button>`,lang:'en'});assert.match(html,/1100 \/ 1100/);assert.equal((html.match(/<article class="card stack">/g)||[]).length,24);
+}));
 
 test('catalog management is administrator-only and browser modules are served',async()=>withApp(async({login,train,view,base})=>{
   const [admin,a]=await Promise.all(['admin','athlete'].map(login));
   const row={names:{en:'Local example',ar:'تجريبي',sv:'Lokalt exempel'},notes:{en:'',ar:'',sv:''},equipment:'bodyweight',muscle:'core',pattern:'coreStability',level:'beginner',media:null};
   assert.equal((await train(a,'catalogCreate',row)).status,403);
   const created=await train(admin,'catalogCreate',row);assert.equal(created.status,200);const id=created.data.training.catalog.find(x=>x.names.en==='Local example').id;
-  assert.equal((await view(a)).data.training.catalog.length,151);
+  assert.equal((await view(a)).data.training.catalog.length,201);
   assert.equal((await train(admin,'catalogArchive',{id})).status,200);assert(!(await view(a)).data.training.catalog.some(x=>x.id===id));
   assert.equal((await train(admin,'catalogRestore',{id})).status,200);
   assert.equal((await train(admin,'catalogUpdate',{...row,id,media:{rights:'',reference:'x'}})).status,400);
   assert.equal((await train(admin,'catalogUpdate',{...row,id,names:{en:'missing'}})).status,400);
   assert(!(await view(admin)).data.training.sessions);
   for(const pathname of ['/core/training-ui.js','/core/exercise-catalog.js']){const response=await fetch(base+pathname);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);assert((await response.text()).length>500)}
+}));
+
+test('exercise content requires all translated notes, rights, three assets and specialist approval; drafts are never exposed',async()=>withApp(async({login,train,view,base,db})=>{
+  const [admin,a]=await Promise.all(['admin','athlete'].map(login)),id='push-up',names=seedExercises.find(x=>x.id===id).names;
+  const notes={en:'Fixture instruction',ar:'تعليمات اختبار',sv:'Testinstruktion'},mistakes={en:'Fixture mistake',ar:'خطأ اختبار',sv:'Testfel'},safety={en:'Fixture warning',ar:'تحذير اختبار',sv:'Testvarning'};
+  const row={id,names,notes,mistakes,safety,equipment:'bodyweight',muscle:'chest',pattern:'horizontalPush',level:'beginner',media:{rights:'Synthetic test only',reference:'Local test fixture'}};
+  const media=(slot,user,bytes,mime,range)=>fetch(base+'/api/training-media?exercise='+id+'&slot='+slot,{method:bytes?'POST':'GET',headers:{...(user?{Cookie:user.cookie}:{}),...(bytes?{'Content-Type':mime}:{}),...(range?{Range:range}:{})},body:bytes});
+  // Tiny byte fixtures exercise the transport/signature checks, not video decoding.
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a/6EAAAAASUVORK5CYII=','base64');
+  const video=Buffer.from([0,0,0,20,102,116,121,112,105,115,111,109,0,0,0,0,105,115,111,109]);
+  assert.equal((await train(admin,'catalogUpdate',row)).status,200);
+  assert.equal((await train(admin,'contentSubmit',{id})).status,400);
+  assert.equal((await media('start',a,png,'image/png')).status,403);
+  assert.equal((await media('start',admin,Buffer.from('<svg>invalid</svg>'),'image/svg+xml')).status,415);
+  assert.equal((await media('start',admin,Buffer.from('Not a real image file'),'image/png')).status,415);
+  assert.equal((await media('start',admin,png,'image/png')).status,200);
+  assert.equal((await media('end',admin,png,'image/png')).status,200);
+  assert.equal((await media('video',admin,video,'video/mp4')).status,200);
+  assert.equal((await media('start',admin)).status,200);
+  assert.equal((await media('start',a)).status,404);assert.equal((await media('start',null)).status,401);
+  let e=(await view(a)).data.training.catalog.find(x=>x.id===id);assert.equal(e.notes.en,'');assert.deepEqual(e.content.assets,{});assert.equal(e.media,null);
+  assert.equal((await train(a,'contentPublish',{id,confirm:true})).status,403);
+  assert.equal((await train(admin,'contentPublish',{id,confirm:true})).status,403);
+  assert.equal((await train(admin,'contentSubmit',{id})).status,200);
+  assert.equal((await media('video',a)).status,404);
+  assert.equal((await train(admin,'contentPublish',{id})).status,403);
+  assert.equal((await train(admin,'contentPublish',{id,confirm:true})).status,200);
+  e=(await view(a)).data.training.catalog.find(x=>x.id===id);assert.equal(e.content.status,'published');assert.equal(e.notes.en,notes.en);assert.equal(e.content.safety.en,safety.en);
+  const r=await media('video',a,null,null,'bytes=0-7');assert.equal(r.status,206);assert.equal((await r.arrayBuffer()).byteLength,8);assert.equal(r.headers.get('content-type'),'video/mp4');
+  const got=await media('start',a);assert.equal(got.status,200);assert.deepEqual(Buffer.from(await got.arrayBuffer()),png);
+  assert.equal((await media('start',admin,png,'image/png')).status,200);assert.equal((await media('start',a)).status,404);
+  assert.equal((await view(a)).data.training.catalog.find(x=>x.id===id).notes.en,'');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM exercise_media').get().n,3);
 }));
 
 test('training builder validates all methods, schedule, order, ownership and coach assignment',async()=>withApp(async({login,train,view,act,enable,change})=>{
