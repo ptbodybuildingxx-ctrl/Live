@@ -1,4 +1,6 @@
 import {tr,langs} from './i18n.js';
+import {modules,canOpen} from './core/modules.js';
+import {workspacePage,toggleSample,toggleCoachLanguage,resetWorkspace} from './core/workspace.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 if(!langs.includes(lang))lang='ar';
@@ -32,9 +34,12 @@ function nav(key){return `<button class="nav-link ${page===key?'active':''}" dat
 function render(){
   applyTheme();if(!state){auth();return}
   if(page==='admin'&&state.me.role!=='admin')page='home';
+  if((page==='workspace'&&config.production)||(modules.some(m=>m.id===page)&&!canOpen(page,state.me.role,config.production)))page='home';
   const unread=state.notifications.filter(x=>!x.read).length;
-  const content=({home,social,live,chat,profile:profilePage,explore,notifications,settings,challenges,admin})[page]||home;
-  $('#app').innerHTML=`<div class="app-shell"><aside class="sidebar">${brand()}<nav class="nav-list">${navs.map(nav).join('')}${nav('explore')}${nav('challenges')}${nav('notifications')}${state.me.role==='admin'?nav('admin'):''}</nav><div class="sidebar-footer stack"><div class="row">${avatar(state.me)}<div class="profile-text"><b>${h(state.me.name)}</b><br><small>${t(state.me.role)}</small></div></div>${nav('settings')}${btn(t('logout'),'logout','','secondary','logout')}<div class="notice">${t('local')}</div></div></aside><main class="main"><header class="topbar">${brand()}<span class="title">${t(page)}</span><div class="actions">${langSelect()}<button class="icon-button" data-action="nav" data-id="explore" aria-label="${t('explore')}">${ic('explore')}</button><button class="icon-button" data-action="nav" data-id="notifications" aria-label="${t('notifications')}">${ic('notifications')}${unread?`<span class="green">${unread}</span>`:''}</button><button class="icon-button mobile-only" data-action="nav" data-id="settings" aria-label="${t('settings')}">${ic('settings')}</button></div></header><div class="main-content">${content()}</div></main><nav class="bottom-nav">${navs.map(nav).join('')}</nav></div>`;
+  const corePage=page==='workspace'||modules.some(m=>m.id===page);
+  const content=corePage?()=>workspacePage({state,id:page,production:config.production,t,h,ic,btn,person,lang}):({home,social,live,chat,profile:profilePage,explore,notifications,settings,challenges,admin})[page]||home;
+  $('#app').innerHTML=`<div class="app-shell"><aside class="sidebar">${brand()}<nav class="nav-list">${navs.map(nav).join('')}${!config.production?nav('workspace'):''}${nav('explore')}${nav('challenges')}${nav('notifications')}${state.me.role==='admin'?nav('admin'):''}</nav><div class="sidebar-footer stack"><div class="row">${avatar(state.me)}<div class="profile-text"><b>${h(state.me.name)}</b><br><small>${t(state.me.role)}</small></div></div>${nav('settings')}${btn(t('logout'),'logout','','secondary','logout')}<div class="notice">${t('local')}</div></div></aside><main class="main"><header class="topbar">${brand()}<span class="title">${t(page)}</span><div class="actions">${langSelect()}${!config.production?btn('', 'nav',`data-id="workspace" aria-label="${t('workspace')}" title="${t('workspace')}"`,'icon-button','dumbbell'):''}<button class="icon-button" data-action="nav" data-id="explore" aria-label="${t('explore')}">${ic('explore')}</button><button class="icon-button" data-action="nav" data-id="notifications" aria-label="${t('notifications')}">${ic('notifications')}${unread?`<span class="green">${unread}</span>`:''}</button><button class="icon-button mobile-only" data-action="nav" data-id="settings" aria-label="${t('settings')}">${ic('settings')}</button></div></header><div class="main-content">${content()}</div></main><nav class="bottom-nav">${navs.map(nav).join('')}</nav></div>`;
+  if(page==='home'&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',`<section class="card row wrap workspace-entry"><div class="grow"><h3>${t('workspace')}</h3><small>${t('workspaceIntro')}</small></div>${btn(t('seeAll'),'nav','data-id="workspace"','primary','dumbbell')}</section>`);
   if(page==='settings')$('.main-content').insertAdjacentHTML('beforeend',`<section class="card stack account-panel"><h2>${t('privacy')}</h2>${btn(t('dataExport'),'account','data-id="dataExport"','secondary')}${btn(t('logoutAll'),'account','data-id="logoutAll"','secondary')}${state.me.role!=='admin'?btn(t('deleteAccount'),'account','data-id="deleteAccount"','danger'):''}<div class="row wrap"><a href="/privacy?lang=${lang}">${t('privacyPolicy')}</a><a href="/terms?lang=${lang}">${t('terms')}</a></div></section>`);
   document.querySelectorAll('[data-action=follow]').forEach(el=>{if((state.followRequests||[]).some(r=>r.from===state.me.id&&r.to===el.dataset.id))el.textContent=t('cancelRequest')});
   const m=$('.messages');if(m)m.scrollTop=m.scrollHeight;
@@ -76,11 +81,13 @@ const form=(type,inner,label='save')=>`<form class="form" data-form="${type}">${
 const imageField=()=>`<label>${t('image')}<input type="file" name="image" accept="image/png,image/jpeg,image/webp"></label>`;
 async function imageData(file){if(!file?.size)return '';if(file.size>12*1024*1024)throw new Error(t('imageLarge'));const src=URL.createObjectURL(file);try{const im=new Image();im.src=src;await im.decode();const canvas=document.createElement('canvas'),ratio=Math.min(1,900/Math.max(im.width,im.height));canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.72);if(data.length>=400000)data=canvas.toDataURL('image/jpeg',.4);if(data.length>=400000)throw new Error(t('imageLarge'));return data}finally{URL.revokeObjectURL(src)}}
 async function act(type,b={}){if(busy)return;busy=true;try{state=await api('action',{type,...b});render();return true}catch(e){toast(e.message||t('error'));return false}finally{busy=false}}
-async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
+async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
     case 'nav':page=id;render();window.scrollTo(0,0);break;
+    case 'sampleToggle':if(!config.production&&canOpen(page,state.me.role)){toggleSample(state,page,id);render()}break;
+    case 'coachLang':if(!config.production&&page==='coaches'){toggleCoachLanguage(state,id,lang);render()}break;
     case 'jump':page=id;if(tab)liveTab=tab;render();window.scrollTo(0,0);break;
     case 'sessionsNav':page='live';liveTab='sessions';render();break;
     case 'liveNav':page='live';liveTab='match';render();break;
@@ -107,7 +114,7 @@ document.addEventListener('click',async e=>{
     case 'readNotifications':await act(action);break;
     case 'admin':await act('admin',{operation:op,id,accept:accept==='true'});break;
     case 'reportPost':case 'reportProfile':modal(t('report'),form('report',`<label>${t('reason')}<textarea name="reason" maxlength="400" required></textarea></label>`,'send'),{id,targetType:action==='reportPost'?'post':'profile',target:id});break;
-    case 'editProfile':{const p=state.me;modal(t('edit'),form('profile',field('name','name',p.name,'text',true)+field('city','city',p.city)+field('sport','sport',p.sport)+field('goal','goal',p.goal)+field('level','level',p.level)+`<label>${t('bio')}<textarea name="bio" maxlength="280">${h(p.bio)}</textarea></label>`));break}
+    case 'editProfile':{const p=state.me;modal(t('edit'),form('profile',field('name','name',p.name,'text',true)+field('city','city',p.city)+field('sport','sport',p.sport)+field('goal','goal',p.goal)+field('level','level',p.level)+(!config.production&&p.role==='coach'?`<div class="stack"><b>${t('spokenLanguages')}</b>${langs.map(l=>`<label class="check-row"><input type="checkbox" name="spokenLanguages" value="${l}" ${(p.spokenLanguages||[p.lang]).includes(l)?'checked':''}>${t('lang_'+l)}</label>`).join('')}</div>`:'')+`<label>${t('bio')}<textarea name="bio" maxlength="280">${h(p.bio)}</textarea></label>`));break}
     case 'newChat':modal(t('newChat'),form('conversation',field('name','groupName')+`<div class="stack"><small>${t('choosePeople')}</small>${state.profiles.filter(p=>p.id!==state.me.id).map(p=>`<label class="check-row"><input type="checkbox" name="members" value="${p.id}">${h(p.name)}</label>`).join('')}</div>`,'create'));break;
     case 'directChat':if(await act('conversation',{members:[id]})){chatId=state.conversations.find(c=>c.members.length===2&&c.members.includes(id))?.id;page='chat';render()}break;
     case 'invite':modal(t('invite'),form('invite',field('title','sport','','text',true)+field('at','date','','datetime-local',true),'send'),{id});break;
@@ -130,6 +137,7 @@ document.addEventListener('submit',async e=>{
     const b={...data,...modalPayload};
     if(type==='post'||type==='story')b.image=await imageData(fd.get('image'));
     if(type==='conversation')b.members=fd.getAll('members');
+    if(type==='profile'&&!config.production&&state.me.role==='coach')b.spokenLanguages=fd.getAll('spokenLanguages');
     if(type==='session')b.at=new Date(data.at).getTime();
     if(type==='settings'){for(const k of ['presence','match','notifications'])b[k]=fd.has(k);lang=b.lang;localStorage.setItem('ml-language',lang)}
     if(type==='message')b.id=f.dataset.id;
@@ -142,3 +150,4 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'?'admin':'home'}catch{}render()}
 init();
 setInterval(async()=>{if(!state||busy||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;try{state=await api('state');render()}catch(e){if(e.status===401){state=null;render()}}},15000);
+

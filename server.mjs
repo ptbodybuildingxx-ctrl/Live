@@ -84,7 +84,8 @@ function action(s,id,b){
   switch(t){
     case 'profile': {
       for(const key of ['name','city','sport','goal','level','bio'])if(b[key]!==undefined)me[key]=clean(b[key],key==='bio'?280:60);
-      assert(me.name,'Name required',400);break;
+      assert(me.name,'Name required',400);
+      if(b.spokenLanguages!==undefined){assert(me.role==='coach'&&Array.isArray(b.spokenLanguages)&&b.spokenLanguages.length<=3&&b.spokenLanguages.every(l=>languages.includes(l)),'Invalid spoken languages',400);me.spokenLanguages=[...new Set(b.spokenLanguages)];if(!me.spokenLanguages.length)me.spokenLanguages=[me.lang];}break;
     }
     case 'settings':{
       if(languages.includes(b.lang))me.lang=b.lang;
@@ -275,7 +276,7 @@ export function createApp({dbPath,release={production:false}}={}){
         }
         return json(res,{error:'Not found'},404);
       }
-      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
+      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
       const file=names[url.pathname];if(!file){res.writeHead(404);return res.end('Not found')}
       const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
       res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));
@@ -289,3 +290,4 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const release=readReleaseConfig();if(process.argv.includes('--release')&&!release.production)throw new Error('Release blocked: ML_MODE=production required');if(release.production)process.umask(0o077);
   createApp({release}).server.listen(port,'127.0.0.1',()=>console.log(`MUSCLIVO LIVE · http://127.0.0.1:${port} · ${release.production?'RELEASE MODE / HTTPS PROXY REQUIRED':'LOCAL DEVELOPMENT'}`));
 }
+

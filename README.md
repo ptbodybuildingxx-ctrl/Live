@@ -1,5 +1,7 @@
 # MUSCLIVO LIVE — Local Release Candidate 1
 
+**Master Roadmap / Sprint 01:** the local workspace now includes the new module navigation, sample training/nutrition/habits checklists, coach-language filtering and independent Arabic, English and Swedish translation files. Planned modules are clearly marked; this is not a completed clinical or club-finance system. See [Master Roadmap](docs/MASTER-ROADMAP.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا
@@ -65,3 +67,4 @@ musclivo-live/
   README.md         Documentation
   RELEASE-CHECKLIST.md  Public-launch gates and deployment runbook
 ```
+
