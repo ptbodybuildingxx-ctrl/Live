@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {activeContext,can} from './identity.mjs';
 import {rehabView,rehabContentView,rehabAction,rehabExport,clearRehabRecords} from './rehab.mjs';
+import {libraryAction,libraryFields,libraryReaderView,libraryExport,removeLibraryReader} from './library.mjs';
 
 // Local test-data only. All writes are validated again on the server.
 export const programModules=['events','campaigns','library','rehab'];
@@ -42,10 +43,6 @@ const active=(row)=>row.status==='published'&&row.start<=today()&&row.end>=today
 function itemBody(module,b){
   const base={title:txt(b.title,100),description:txt(b.description,2000),language:b.language};
   need(['ar','en','sv'].includes(base.language),'Invalid language');
-  if(module==='library'){
-    need(['book','guide'].includes(b.category)&&b.rights===true,'Rights confirmation required');
-    return {...base,category:b.category,author:txt(b.author,100),rightsNote:txt(b.rightsNote,200),content:txt(b.content,12000)};
-  }
   const start=date(b.start),end=date(b.end);need(start<=end,'Invalid date range');
   if(module==='events'){
     const minimum=num(b.minimum,1,500),capacity=num(b.capacity,minimum,500);
@@ -59,7 +56,7 @@ function publicItem(s,id,row){
   const e=participants(s,row),own=e.find(x=>x.owner===id),m=manage(s,id,row);
   const {createdBy,...fields}=row;
   const event=row.module==='events', seats=event?confirmed(s,row):e;
-  return {...fields,manage:m,count:seats.length,waitCount:event?e.length-seats.length:0,waiting:!!own&&event&&!seats.includes(own),joined:!!own,checkins:own?.checkins||[],eventStatus:event?eventStatus(s,row):undefined,
+  return {...fields,...(row.module==='library'?libraryFields(row):{}),manage:m,count:seats.length,waitCount:event?e.length-seats.length:0,waiting:!!own&&event&&!seats.includes(own),joined:!!own,checkins:own?.checkins||[],eventStatus:event?eventStatus(s,row):undefined,
     ...(m&&row.module!=='library'?{roster:e.map(x=>({id:x.owner,name:profile(s,x.owner)?.name,checkins:x.checkins.length,attended:!!x.attended,waiting:event&&!seats.includes(x)}))}:{})};
 }
 export function programsView(s,id){
@@ -69,6 +66,7 @@ export function programsView(s,id){
     items:d.items.filter(r=>(enabled(s,r.module)||isAdmin)&&scope(s,id,r)&&(r.status==='published'||manage(s,id,r))).map(r=>publicItem(s,id,r)),
     ...(p&&enabled(s,'rehab')?{rehab:rehabView(s,id,d)}:{}),
     ...(isAdmin||(p&&enabled(s,'rehab'))?{rehabContent:rehabContentView(d,isAdmin,enabled(s,'rehab'))}:{}),
+    library:libraryReaderView(s,id,d),
     ...(isAdmin?{audit:d.audit,summary:{clubs:s.identity.clubs.length,accounts:s.profiles.length,events:d.items.filter(r=>r.module==='events').length,campaigns:d.items.filter(r=>r.module==='campaigns').length,library:d.items.filter(r=>r.module==='library').length}}:{})};
 }
 export function programsAction(s,id,b){
@@ -81,6 +79,7 @@ export function programsAction(s,id,b){
   if(module==='rehab'){
     return rehabAction(s,id,d,b,enabled(s,module),(operation,target)=>audit(s,id,operation,target,module));
   }
+  if(module==='library')return libraryAction(s,id,d,b,(operation,target)=>audit(s,id,operation,target,module));
   if(op==='create'){
     const clubId=b.scope==='club'?activeContext(s,id)?.clubId:null;
     need(b.scope!=='club'||module==='events'&&clubId,'Club event required',403);
@@ -121,9 +120,10 @@ export function revokeProgramGrant(s,clubId,id){
   const ids=new Set(s.programs.items.filter(r=>r.clubId===clubId).map(r=>r.id));
   s.programs.entries=s.programs.entries.filter(e=>e.owner!==id||!ids.has(e.itemId));
 }
-export function programsExport(s,id){if(!s.programs)return undefined;const d=read(s);return {entries:d.entries.filter(e=>e.owner===id),rehab:rehabExport(d,id)}}
+export function programsExport(s,id){if(!s.programs)return undefined;const d=read(s);return {entries:d.entries.filter(e=>e.owner===id),rehab:rehabExport(d,id),library:libraryExport(d,id)}}
 export function removePrograms(s,id){
   if(!s.programs)return;clearRehab(s,id);
+  removeLibraryReader(s.programs,id);
   const d=s.programs,removed=new Set(d.items.filter(r=>r.clubId&&!s.identity.clubs.some(c=>c.id===r.clubId)).map(r=>r.id));
   d.items=d.items.filter(r=>!removed.has(r.id));for(const r of d.items)if(r.createdBy===id)r.createdBy=null;
   d.entries=d.entries.filter(e=>e.owner!==id&&!removed.has(e.itemId));for(const a of d.audit)if(a.actor===id)a.actor=null;

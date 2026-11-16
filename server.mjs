@@ -14,6 +14,8 @@ import {clubChatView,clubChatAction,clubChatExport,removeClubChat,revokeClubChat
 import {programsView,programsAction,programsExport,removePrograms,clearRehab,revokeProgramGrant} from './programs.mjs';
 import {trainingView,trainingAction,trainingExport,removeTraining,clearTraining,trainingMediaRow,trainingAttachMedia} from './training.mjs';
 import {nutritionView,nutritionAction,nutritionExport,clearNutrition} from './nutrition.mjs';
+import {libraryFileRow,libraryAttachFile,libraryFileAudit} from './library.mjs';
+import {libraryPdfLimit,libraryTotalPdfLimit} from './dist/core/library-schema.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const uuid = randomUUID;
@@ -237,6 +239,7 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
   if(dbPath!==':memory:')mkdirSync(dirname(dbPath),{recursive:true,mode:0o700});
   const db=new DatabaseSync(dbPath);
   db.exec('CREATE TABLE IF NOT EXISTS exercise_media (exercise_id TEXT NOT NULL, slot TEXT NOT NULL, mime TEXT NOT NULL, data BLOB NOT NULL, sha TEXT NOT NULL, PRIMARY KEY(exercise_id,slot));');
+  db.exec('CREATE TABLE IF NOT EXISTS library_pdf (item_id TEXT PRIMARY KEY, data BLOB NOT NULL, sha TEXT NOT NULL);');
   db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL); CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id); CREATE TABLE IF NOT EXISTS auth_codes (user_id TEXT NOT NULL, purpose TEXT NOT NULL, digest TEXT NOT NULL, expires INTEGER NOT NULL, PRIMARY KEY(user_id,purpose));');
   const read=()=>{const s=JSON.parse(db.prepare('SELECT data FROM state WHERE id=1').get().data);return production?s:ensureIdentity(s)};
   const save=s=>{
@@ -287,7 +290,7 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
       if(url.pathname.startsWith('/api/')){
         const ip=req.socket.remoteAddress||'unknown';
         rate('ip:'+ip,production?1500:3000,60000);
-        if(req.method==='POST'){assert(production?req.headers.origin===release.origin:(!req.headers.origin||req.headers.origin===`http://${req.headers.host}`),'Invalid origin');if(url.pathname!=='/api/training-media')assert((req.headers['content-type']||'').includes('application/json'),'JSON required',415)}
+        if(req.method==='POST'){assert(production?req.headers.origin===release.origin:(!req.headers.origin||req.headers.origin===`http://${req.headers.host}`),'Invalid origin');if(!['/api/training-media','/api/library-pdf'].includes(url.pathname))assert((req.headers['content-type']||'').includes('application/json'),'JSON required',415)}
         if(url.pathname==='/api/config'&&req.method==='GET')return json(res,{production,demo:!production,policyVersion:POLICY_VERSION,contact:production?release.contact:null,features:flags});
         if(url.pathname==='/api/health'&&req.method==='GET')return json(res,{ok:true});
         const id=session(req);
@@ -326,6 +329,22 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
         if(url.pathname==='/api/logout'&&req.method==='POST'){revoke(req);clearCookie(res);return json(res,{ok:true});}
         const s=read(),me=profile(s,id);assert(id&&me&&!me.suspended&&(!production||me.emailVerified===true),'Sign in required',401);
         rate('user:'+id,production?120:500,60000);
+        if(url.pathname==='/api/library-pdf'){
+          assert(!production&&s.identity,'Local library unavailable',404);const itemId=url.searchParams.get('id');
+          if(req.method==='POST'){
+            libraryFileRow(s,id,itemId,true);rate('library-pdf:'+id,20,60000);const remove=url.searchParams.get('remove')==='1';
+            let data=null,sha=null,size=0;
+            if(!remove){assert(req.headers['content-type']==='application/pdf','PDF required',415);assert(!req.headers['content-length']||Number(req.headers['content-length'])<=libraryPdfLimit,'PDF too large',413);const chunks=[];for await(const c of req){size+=c.length;assert(size<=libraryPdfLimit,'PDF too large',413);chunks.push(c)}data=Buffer.concat(chunks);assert(size>=16&&data.toString('ascii',0,5)==='%PDF-'&&data.subarray(Math.max(0,size-2048)).toString('ascii').includes('%%EOF'),'Invalid PDF signature',415);sha=digest(data)}
+            else assert(!req.headers['content-length']||Number(req.headers['content-length'])===0,'Empty removal request required',400);
+            const fresh=read();assert(session(req)===id&&profile(fresh,id)&&!profile(fresh,id).suspended,'Sign in required',401);libraryAttachFile(fresh,id,itemId,remove?null:{size,sha});libraryFileAudit(fresh,id,remove?'libraryPdfRemove':'libraryPdfAttach',itemId);
+            const used=db.prepare('SELECT COALESCE(SUM(length(data)),0) AS total FROM library_pdf WHERE item_id<>?').get(itemId).total;assert(used+size<=libraryTotalPdfLimit,'Local library quota reached',429);
+            db.exec('BEGIN');try{if(remove)db.prepare('DELETE FROM library_pdf WHERE item_id=?').run(itemId);else db.prepare('INSERT INTO library_pdf VALUES (?,?,?) ON CONFLICT(item_id) DO UPDATE SET data=excluded.data,sha=excluded.sha').run(itemId,data,sha);save(fresh);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}return json(res,snapshot(fresh,id,flags));
+          }
+          if(req.method==='GET'){
+            const book=libraryFileRow(s,id,itemId);assert(book.pdf,'PDF not found',404);const row=db.prepare('SELECT data,sha FROM library_pdf WHERE item_id=?').get(itemId);assert(row&&row.sha===book.pdf.sha,'PDF not found',404);const bytes=Buffer.from(row.data);res.writeHead(200,{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="musclivo-${book.id}.pdf"`,'Content-Length':bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin'});return res.end(bytes);
+          }
+          return json(res,{error:'Not found'},404);
+        }
         if(url.pathname==='/api/training-media'){
           assert(!production&&s.identity,'Local training unavailable',404);
           const exerciseId=url.searchParams.get('exercise'),slot=url.searchParams.get('slot');
@@ -375,6 +394,8 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
       names['/core/health-insights.js']='core/health-insights.js';
       names['/core/rehab-schema.js']='core/rehab-schema.js';
       names['/core/rehab-ui.js']='core/rehab-ui.js';
+      names['/core/library-schema.js']='core/library-schema.js';
+      names['/core/library-ui.js']='core/library-ui.js';
       for(const style of ['tokens','base','responsive','modules','training','components'])names['/styles/'+style+'.css']='styles/'+style+'.css';
       const draftModules=['xdraw-engine','exercise-drawing-new','exercise-drawings','exercise-kinematics','exercise-drawing-corrections','exercise-drawing-legacy-tracks','exercise-drawing-anatomy','exercise-apparatus'];
       const draftModule=draftModules.find(name=>url.pathname==='/core/'+name+'.js');

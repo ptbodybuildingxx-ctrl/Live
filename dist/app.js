@@ -8,6 +8,7 @@ import {wellnessForm,wellnessFormRecord,wellnessSettings,todayLocal} from './cor
 import {habitForm,healthGoalForm,healthGoalPayload} from './core/health-ui.js';
 import {healthHabitTemplates} from './core/health-config.js';
 import {healthReminderBanner} from './core/health-insights.js';
+import {libraryPdfLimit} from './core/library-schema.js';
 import {coachingProgramForm} from './core/coaching-ui.js';
 import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
@@ -107,6 +108,7 @@ const form=(type,inner,label='save')=>`<form class="form" data-form="${type}">${
 const imageField=()=>`<label>${t('image')}<input type="file" name="image" accept="image/png,image/jpeg,image/webp"></label>`;
 async function imageData(file){if(!file?.size)return '';if(file.size>12*1024*1024)throw new Error(t('imageLarge'));const src=URL.createObjectURL(file);try{const im=new Image();im.src=src;await im.decode();const canvas=document.createElement('canvas'),ratio=Math.min(1,900/Math.max(im.width,im.height));canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.72);if(data.length>=400000)data=canvas.toDataURL('image/jpeg',.4);if(data.length>=400000)throw new Error(t('imageLarge'));return data}finally{URL.revokeObjectURL(src)}}
 async function act(type,b={}){if(busy)return;busy=true;const revision=++stateRevision;try{const next=await api('action',{type,...b});if(revision!==stateRevision)return false;state=next;render();return true}catch(e){toast(e.message||t('error'));return false}finally{busy=false}}
+async function libraryPdfChange(id,file,remove=false){if(busy||config.production||!state?.programs?.canAdmin)return;busy=true;const revision=++stateRevision;try{if(!remove&&(!file?.size||file.size>libraryPdfLimit||(!file.name?.toLowerCase().endsWith('.pdf')&&file.type!=='application/pdf')))throw new Error(t('libraryPdfInvalid'));const r=await fetch('/api/library-pdf?id='+encodeURIComponent(id)+(remove?'&remove=1':''),{method:'POST',headers:{'Content-Type':remove?'application/octet-stream':'application/pdf'},...(remove?{}:{body:file})});const next=await r.json();if(!r.ok)throw new Error(next.error||t('error'));if(revision===stateRevision){state=next;render();toast(t('success'))}}catch(e){toast(e.message||t('error'))}finally{busy=false}}
 async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();resetTrainingUI();resetNutritionUI();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'&&!state.dashboard?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
@@ -126,8 +128,9 @@ document.addEventListener('click',async e=>{
       if(ok&&op==='planCopy'){trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);render()}
     }break;
     case 'programAction':if(!config.production&&state.programs){
+      if(op==='libraryPdfRemove'){if(confirm(t('programConfirm')))await libraryPdfChange(id,null,true);break}
       if(op==='download'){const r=state.programs.items.find(x=>x.module==='library'&&x.id===id);if(r){const url=URL.createObjectURL(new Blob([r.title+'\n'+r.author+'\n'+r.rightsNote+'\n\n'+r.content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='musclivo-'+r.id+'.txt';a.click();URL.revokeObjectURL(url)}break;}
-      if(!['delete','archive','rehabCheckinDelete','rehabTaskDelete','rehabContentArchive'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true',taskId:el.dataset.task,checkinId:el.dataset.checkin,completed:el.dataset.completed==='true'});
+      if(!['delete','archive','rehabCheckinDelete','rehabTaskDelete','rehabContentArchive','libraryClear'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true',taskId:el.dataset.task,checkinId:el.dataset.checkin,completed:el.dataset.completed==='true',favorite:el.dataset.favorite==='true'});
     }break;
     case 'nav':page=id;if(id==='chat')chatMode=state.clubChat?'club':'personal';render();window.scrollTo(0,0);break;
     case 'chatMode':chatMode=id==='club'?'club':'personal';render();break;
@@ -253,6 +256,7 @@ document.addEventListener('submit',async e=>{
     if(ok){if(op==='planCreate')clearTrainingDraft(state.me.id);if(op==='start')trainingUI(state.me.id,'tab','live');else if(op==='finish')trainingUI(state.me.id,'tab','progress');else if(['planCreate','planCreateTemplate'].includes(op))trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);else if(['blockAdd','blockUpdate','dayRest'].includes(op))trainingUI(state.me.id,'block','');else if(['catalogCreate','catalogUpdate'].includes(op))trainingUI(state.me.id,'edit','');render()}return;
   }
   if(type==='programFilter'){if(state&&!config.production){programFilter(state.me.id,data);render()}return}
+  if(type==='libraryUpload'){await libraryPdfChange(data.id,fd.get('file'));return}
   if(type==='programs'){if(!config.production&&state.programs&&(!(data.operation==='share'&&data.linkId!=='none')||confirm(t('programShareConfirm'))))await act('programs',programPayload(data));return}
   if(['clubChatCreate','clubChatInvite','clubChatMessage'].includes(type)){if(!config.production&&state.clubChat){const operation={clubChatCreate:'create',clubChatInvite:'invite',clubChatMessage:'send'}[type];await act('clubChat',{...data,operation,clubId:state.clubChat.clubId})}return;}
   if(['clubChatReport','privateChatReport'].includes(type)){if(!config.production&&state.identity&&modalPayload){const ok=await act(type==='clubChatReport'?'clubChat':'chatReport',{...modalPayload,reason:data.reason});if(ok){closeModal();toast(t('success'))}}return;}
@@ -285,5 +289,5 @@ document.addEventListener('dragend',()=>{trainingDrag=null});
 setInterval(()=>{if(state&&page==='trainingPro')updateTrainingTimer()},1000);
 async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'&&!state.dashboard?'admin':'home'}catch{}render()}
 init();
-setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||(page==='rehab'&&document.querySelector('.rehab-edit[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
+setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||(page==='rehab'&&document.querySelector('.rehab-edit[open]'))||(page==='library'&&document.querySelector('.library-edit[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
 

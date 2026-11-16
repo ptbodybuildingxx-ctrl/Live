@@ -21,6 +21,15 @@
 .rehab-pro .rehab-body {min-width:0;overflow-wrap:anywhere;padding-block:4px}
 .rehab-pro .rehab-body .row.wrap>* {min-width:0}
 .rehab-pro .rehab-body textarea {min-height:90px}
+.library-grid {grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));align-items:start}
+.library-item,.library-item .library-body {min-width:0;overflow-wrap:anywhere}
+.library-cover {min-height:142px;border-radius:var(--radius-panel);padding:18px;display:grid;gap:10px;align-content:center;overflow-wrap:anywhere;background:linear-gradient(135deg,color-mix(in srgb,var(--green) 14%,var(--panel)),var(--surface-inset));border:1px solid var(--line-strong);border-inline-start:6px solid var(--green)}
+.library-cover span {color:var(--green);font-size:11px;letter-spacing:.12em;font-weight:800}
+.library-cover strong {font-size:clamp(20px,3vw,29px);line-height:1.25}
+.library-text {white-space:pre-wrap;line-height:1.7;max-height:520px;overflow:auto}
+.library-body {padding-block:6px}
+.library-body a.secondary {display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:10px}
+.library-pro .dashboard-metrics {grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr))}
 .workspace-hero {
   min-height:180px
 }

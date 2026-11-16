@@ -63,4 +63,6 @@ Health Pro extends Sprint 04 locally with recurring habits, private daily activi
 
 Rehab Pro extends Sprint 08 locally with private case records, dated follow-up, manual checklists, consent-scoped sharing and an empty administrative content library. Rehabilitation exercises and instructional content are deferred; see [Rehab Pro](REHAB-PRO.md).
 
+Library Pro extends Sprint 08 with an empty books/guides catalog, localized metadata, rights-controlled drafts, local PDF attachments, a reader, search and private favorites/reading progress. See [Library Pro](LIBRARY-PRO.md).
+
 The MVP prioritizes identity, security, core training/nutrition/habits and coach directory. Existing social features remain available locally. All other modules are developed and released gradually; scaffolding is not a claim of completion. The public version requires a secure server and validated production configuration. Only free-tier infrastructure is targeted initially; operating costs depend on actual usage and service limits. No live external database, real payments or production deployment are authorized by this sprint.
