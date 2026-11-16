@@ -12,6 +12,7 @@ import {coachingView,coachingAction,coachingExport,removeCoaching,revokeCoaching
 import {clubOpsView,clubOpsAction,clubOpsExport,removeClubOps,revokeMembership} from './club-ops.mjs';
 import {clubChatView,clubChatAction,clubChatExport,removeClubChat,revokeClubChatGrant,cancelClubChatPairInvites,reportPrivateMessage} from './club-chat.mjs';
 import {programsView,programsAction,programsExport,removePrograms,clearRehab,revokeProgramGrant} from './programs.mjs';
+import {trainingView,trainingAction,trainingExport,removeTraining,clearTraining} from './training.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const uuid = randomUUID;
@@ -73,6 +74,7 @@ function snapshot(s,id,flags){
   const clubOps=clubOpsView(s,id);
   const clubChat=clubChatView(s,id);
   const programs=programsView(s,id);
+  const training=trainingView(s,id);
   const me=profile(s,id);
   const profiles=s.profiles.filter(p=>p.role!=='admin'&&visible(s,p.id,id,'profile')).map(p=>safeProfile(s,p,id));
   const posts=s.posts.filter(p=>visible(s,p.owner,id,'posts')).slice(0,50).map(p=>({...p,comments:p.comments.filter(c=>!blocked(s,c.owner,id)).slice(-100)}));
@@ -83,6 +85,7 @@ function snapshot(s,id,flags){
     ...(clubOps?{clubOps}:{}),
     ...(clubChat?{clubChat}:{}),
     ...(programs?{programs}:{}),
+    ...(training?{training}:{}),
     ...(flags.smartDashboard&&identity?.active?{dashboard:dashboardView(s,id,identity,flags,coaching,clubOps)}:{}),
     stories:s.stories.filter(x=>x.at>now()-DAY&&visible(s,x.owner,id,'stories')),
     follows:s.follows.filter(x=>x.from===id||x.to===id),saved:s.saved.filter(x=>x.owner===id),
@@ -102,6 +105,7 @@ function action(s,id,b){
   const validTarget=()=>assert(other&&other.id!==id&&visible(s,other.id,id,'profile'),'Account unavailable',404);
   const toggle=(arr,find,create)=>{const i=arr.findIndex(find);if(i>=0)arr.splice(i,1);else arr.push(create)};
   switch(t){
+    case 'training':{assert(s.identity,'Local training unavailable',404);trainingAction(s,id,b);break;}
     case 'programs':{assert(s.identity,'Local programs unavailable',404);programsAction(s,id,b);break;}
     case 'clubChat':{assert(s.identity,'Local club chat unavailable',404);clubChatAction(s,id,b);break;}
     case 'chatReport':{assert(s.identity,'Local chat reporting unavailable',404);reportPrivateMessage(s,id,b);break;}
@@ -115,7 +119,7 @@ function action(s,id,b){
     }
     case 'wellness':{
       assert(s.identity,'Local personal records unavailable',404);
-      wellnessAction(s,id,b);if(b.operation==='clear'){disableWorkoutSharing(s,id);clearRehab(s,id)}break;
+      wellnessAction(s,id,b);if(b.operation==='clear'){disableWorkoutSharing(s,id);clearRehab(s,id);clearTraining(s,id)}break;
     }
     case 'identity':{
       assert(s.identity,'Local identity module unavailable',404);
@@ -202,6 +206,7 @@ function removeAccount(s,id){
   removeClubOps(s,id);
   removeClubChat(s,id);
   removePrograms(s,id);
+  removeTraining(s,id);
   const owned=new Set(s.posts.filter(p=>p.owner===id).map(p=>p.id));
   s.profiles=s.profiles.filter(p=>p.id!==id);
   s.posts=s.posts.filter(p=>p.owner!==id).map(p=>({...p,likes:p.likes.filter(x=>x!==id),comments:p.comments.filter(c=>c.owner!==id)}));
@@ -218,8 +223,9 @@ function removeAccount(s,id){
   s.verifications=s.verifications.filter(x=>x.owner!==id);
   s.reports=s.reports.filter(x=>x.by!==id&&x.target!==id&&!owned.has(x.target)&&x.evidence?.senderId!==id);
 }
-export function createApp({dbPath,release={production:false},features={smartDashboard:process.env.ML_SMART_DASHBOARD!=='0',dashboardMetrics:process.env.ML_DASHBOARD_METRICS!=='0'}}={}){
+export function createApp({dbPath,demoPassword,release={production:false},features={smartDashboard:process.env.ML_SMART_DASHBOARD!=='0',dashboardMetrics:process.env.ML_DASHBOARD_METRICS!=='0'}}={}){
   const production=release.production===true;
+  if(!production&&demoPassword!==undefined&&(typeof demoPassword!=='string'||demoPassword.length<16||demoPassword.length>128))throw new Error('Local demo password must be 16–128 characters');
   const flags=dashboardFlags(production,features);
   dbPath??=resolve(root,production?'data/production.sqlite':'data/local.sqlite');
   if(production&&(!release.origin?.startsWith('https://')||typeof release.mailer!=='function'||!emailValid(release.adminEmail||'')||typeof release.adminPassword!=='string'||release.adminPassword.length<16||!emailValid(release.contact||'')))throw new Error('Release blocked: incomplete configuration');
@@ -236,12 +242,19 @@ export function createApp({dbPath,release={production:false},features={smartDash
   if(!db.prepare('SELECT id FROM state WHERE id=1').get()){
     db.exec('BEGIN');try{
       if(production){const s=emptyState(),id=uuid();s.profiles.push({id,name:'MUSCLIVO Admin',email:release.adminEmail,role:'admin',city:'',sport:'',goal:'',level:'',lang:'en',bio:'',color:'#39FF88',xp:0,privacy:publicPrivacy(),status:'offline',lastActive:now(),joined:now(),emailVerified:true,policyVersion:POLICY_VERSION,policyAcceptedAt:now()});save(s);add(id,release.adminEmail,release.adminPassword)}
-      else{save(makeState());for(const p of sample)add(p.id,p.email,'DemoLive2026!')}
+      else{save(makeState());for(const p of sample)add(p.id,p.email,randomBytes(32).toString('hex'))}
       db.exec('COMMIT');
     }catch(e){db.exec('ROLLBACK');throw e}
   }
-  if(!production)save(read());
-  if(production&&(read().identity||read().wellness||read().coaching||read().clubOps||read().clubChat||read().programs||read().profiles.some(p=>p.id.startsWith('demo-')||p.email?.endsWith('@demo.local')||p.emailVerified===undefined))){db.close();throw new Error('Release blocked: use a fresh production database, never a demo database')}
+  if(!production){
+    // Rotate all seeded demo credentials (including databases created before this change).
+    // Never persist a cleartext credential or expose it in an API response.
+    db.exec('BEGIN');try{
+      for(const p of sample){const salt=randomBytes(16).toString('hex');db.prepare('UPDATE accounts SET salt=?,hash=? WHERE id=? AND email=?').run(salt,hash(demoPassword??randomBytes(32).toString('hex'),salt),p.id,p.email);db.prepare('DELETE FROM sessions WHERE user_id=?').run(p.id)}
+      save(read());db.exec('COMMIT');
+    }catch(e){db.exec('ROLLBACK');db.close();throw e}
+  }
+  if(production&&(read().identity||read().wellness||read().coaching||read().clubOps||read().clubChat||read().programs||read().training||read().profiles.some(p=>p.id.startsWith('demo-')||p.email?.endsWith('@demo.local')||p.emailVerified===undefined))){db.close();throw new Error('Release blocked: use a fresh production database, never a demo database')}
   const tokenFrom=req=>(req.headers.cookie||'').match(/(?:^|; )ml_session=([a-f0-9]{64})(?:;|$)/)?.[1];
   const revoke=req=>{const token=tokenFrom(req);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(digest(token))};
   const session=(req)=>{const token=tokenFrom(req);return token?db.prepare('SELECT user_id FROM sessions WHERE token=? AND expires>?').get(digest(token),now())?.user_id:null};
@@ -250,7 +263,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
   const clearCookie=res=>res.setHeader('Set-Cookie','ml_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+cookieSuffix);
   const rates=new Map();
   function rate(key,limit,window){const ts=now();if(rates.size>10000){for(const [k,v] of rates)if(v.until<=ts)rates.delete(k);assert(rates.size<=10000,'Server busy',429)}let r=rates.get(key);if(!r||r.until<=ts){r={n:0,until:ts+window};rates.set(key,r)}r.n++;assert(r.n<=limit,'Too many requests. Try again later.',429)}
-  const dummySalt=randomBytes(16).toString('hex'),dummyHash=hash('not-a-password',dummySalt);
+  const dummySalt=randomBytes(16).toString('hex'),dummyHash=hash(randomBytes(32).toString('hex'),dummySalt);
   function checkPassword(account,password){const computed=hash(password,account?.salt||dummySalt);return timingSafeEqual(Buffer.from(computed,'hex'),Buffer.from(account?.hash||dummyHash,'hex'))&&!!account}
   function codeValid(uid,purpose,code){const item=db.prepare('SELECT digest FROM auth_codes WHERE user_id=? AND purpose=? AND expires>?').get(uid,purpose,now());return !!item&&timingSafeEqual(Buffer.from(item.digest,'hex'),Buffer.from(digest(code),'hex'))}
   async function sendCode(p,purpose){const code=randomBytes(24).toString('hex');db.prepare('INSERT INTO auth_codes VALUES (?,?,?,?) ON CONFLICT(user_id,purpose) DO UPDATE SET digest=excluded.digest,expires=excluded.expires').run(p.id,purpose,digest(code),now()+30*60000);try{await release.mailer({to:p.email,purpose,code,lang:p.lang})}catch{throw bad('Email delivery unavailable. Try again later.',503)}}
@@ -298,7 +311,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
             if(p&&!p.suspended&&((b.mode==='resend'&&!p.emailVerified)||(b.mode==='forgot'&&p.emailVerified)))await sendCode(p,b.mode==='resend'?'verify':'reset');
             return json(res,{ok:true});
           }else if(b.mode==='demo'){
-            assert(!production,'Demo accounts disabled',404);const p=sample.find(x=>x.id==='demo-'+clean(b.role,20));assert(p,'Invalid demo role',400);uid=p.id;assert(!profile(read(),uid).suspended,'Account suspended');
+            assert(!production,'Demo accounts disabled',404);assert(['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip)&&/^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(req.headers.host||''),'Local demo access only',403);const p=sample.find(x=>x.id==='demo-'+clean(b.role,20));assert(p,'Invalid demo role',400);uid=p.id;const demo=profile(read(),uid);assert(demo&&!demo.suspended,'Account unavailable',403);
           }else{
             assert(b.mode==='login','Unknown authentication action',400);const a=db.prepare('SELECT * FROM accounts WHERE email=?').get(email);assert(checkPassword(a,password),'Invalid credentials',401);uid=a.id;const p=profile(read(),uid);assert(!p.suspended,'Account suspended');assert(!production||p.emailVerified===true,'Email verification required',403);
           }
@@ -312,7 +325,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
           rate('account:'+id,8,600000);
           const b=await parse(req),fresh=read(),p=profile(fresh,id);assert(p&&!p.suspended);const account=db.prepare('SELECT * FROM accounts WHERE id=?').get(id),pass=String(b.password||'');assert(pass.length<=128&&checkPassword(account,pass),'Invalid credentials',401);
           if(b.operation==='logoutAll'){db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);clearCookie(res);return json(res,{ok:true})}
-          if(b.operation==='export'){return json(res,{profile:p,posts:fresh.posts.filter(x=>x.owner===id),comments:fresh.posts.flatMap(x=>x.comments.filter(c=>c.owner===id).map(c=>({...c,post:x.id}))),stories:fresh.stories.filter(x=>x.owner===id),follows:fresh.follows.filter(x=>x.from===id||x.to===id),messages:fresh.conversations.filter(c=>c.members.includes(id)).flatMap(c=>c.messages.filter(m=>m.owner===id).map(m=>({...m,conversation:c.id}))),requests:fresh.requests.filter(x=>x.from===id||x.to===id),reports:fresh.reports.filter(x=>x.by===id),settings:p.privacy,identity:identityExport(fresh,id),wellness:wellnessExport(fresh,id),coaching:coachingExport(fresh,id),clubOps:clubOpsExport(fresh,id),clubChat:clubChatExport(fresh,id),programs:programsExport(fresh,id)})}
+          if(b.operation==='export'){return json(res,{profile:p,posts:fresh.posts.filter(x=>x.owner===id),comments:fresh.posts.flatMap(x=>x.comments.filter(c=>c.owner===id).map(c=>({...c,post:x.id}))),stories:fresh.stories.filter(x=>x.owner===id),follows:fresh.follows.filter(x=>x.from===id||x.to===id),messages:fresh.conversations.filter(c=>c.members.includes(id)).flatMap(c=>c.messages.filter(m=>m.owner===id).map(m=>({...m,conversation:c.id}))),requests:fresh.requests.filter(x=>x.from===id||x.to===id),reports:fresh.reports.filter(x=>x.by===id),settings:p.privacy,identity:identityExport(fresh,id),wellness:wellnessExport(fresh,id),coaching:coachingExport(fresh,id),clubOps:clubOpsExport(fresh,id),clubChat:clubChatExport(fresh,id),programs:programsExport(fresh,id),training:trainingExport(fresh,id)})}
           if(b.operation==='delete'){assert(p.role!=='admin','Administrator cannot self-delete');assert(b.confirm===true,'Confirmation required',400);removeAccount(fresh,id);db.exec('BEGIN');try{save(fresh);db.prepare('DELETE FROM accounts WHERE id=?').run(id);db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);db.prepare('DELETE FROM auth_codes WHERE user_id=?').run(id);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}clearCookie(res);return json(res,{ok:true})}
           throw bad('Unknown account operation');
         }
@@ -325,7 +338,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
         }
         return json(res,{error:'Not found'},404);
       }
-      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/core/wellness-schema.js':'core/wellness-schema.js','/core/wellness-ui.js':'core/wellness-ui.js','/core/coaching-ui.js':'core/coaching-ui.js','/core/club-ops-ui.js':'core/club-ops-ui.js','/core/club-chat-ui.js':'core/club-chat-ui.js','/core/programs-ui.js':'core/programs-ui.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
+      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/core/wellness-schema.js':'core/wellness-schema.js','/core/wellness-ui.js':'core/wellness-ui.js','/core/coaching-ui.js':'core/coaching-ui.js','/core/club-ops-ui.js':'core/club-ops-ui.js','/core/club-chat-ui.js':'core/club-chat-ui.js','/core/programs-ui.js':'core/programs-ui.js','/core/training-ui.js':'core/training-ui.js','/core/exercise-catalog.js':'core/exercise-catalog.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
       const file=names[url.pathname];if(!file){res.writeHead(404);return res.end('Not found')}
       const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
       res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));
@@ -337,6 +350,6 @@ export function createApp({dbPath,release={production:false},features={smartDash
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const port=Number(process.env.PORT||4173);
   const release=readReleaseConfig();if(process.argv.includes('--release')&&!release.production)throw new Error('Release blocked: ML_MODE=production required');if(release.production)process.umask(0o077);
-  createApp({release}).server.listen(port,'127.0.0.1',()=>console.log(`MUSCLIVO LIVE · http://127.0.0.1:${port} · ${release.production?'RELEASE MODE / HTTPS PROXY REQUIRED':'LOCAL DEVELOPMENT'}`));
+  createApp({release,demoPassword:release.production?undefined:process.env.ML_LOCAL_DEMO_PASSWORD}).server.listen(port,'127.0.0.1',()=>console.log(`MUSCLIVO LIVE · http://127.0.0.1:${port} · ${release.production?'RELEASE MODE / HTTPS PROXY REQUIRED':'LOCAL DEVELOPMENT'}`));
 }
 

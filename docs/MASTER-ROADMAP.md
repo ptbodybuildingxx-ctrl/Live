@@ -47,6 +47,10 @@ The central workspace links existing moderation and identity administration, rep
 
 19 automated tests pass, including consent, event enrollment, library publication, feature flags, backup integrity and the production gate. Browser/device acceptance, policy review, secure hosting and production deployment remain open. Chromium could not launch in the test sandbox. See [Programs and administration](PROGRAMS-ADMIN.md) and [release checklist](../RELEASE-CHECKLIST.md).
 
+## Sprints 11–14 — local Training Pro
+
+Exercise catalog (150 entries, four equipment families, three languages), advanced methods (12), scheduled plan builder with coach assignment, resumable workout logging and personal progress are implemented. The previous modules remain intact, and all 25 automated tests pass, including ephemeral demo credential rotation. Media rights and specialist-reviewed instructions, physical-device acceptance and the public release gate remain open. See [Training Pro](TRAINING-PRO.md).
+
 ## MVP scope and rules
 
 The MVP prioritizes identity, security, core training/nutrition/habits and coach directory. Existing social features remain available locally. All other modules are developed and released gradually; scaffolding is not a claim of completion. The public version requires a secure server and validated production configuration. Only free-tier infrastructure is targeted initially; operating costs depend on actual usage and service limits. No live external database, real payments or production deployment are authorized by this sprint.

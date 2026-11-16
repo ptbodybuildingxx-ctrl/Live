@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {contexts,can,ensureIdentity,identityAction,identityView} from '../identity.mjs';
 import {workspaceRole,identityPage} from '../dist/core/identity-ui.js';
 import {tr,langs} from '../dist/i18n.js';
@@ -10,7 +10,7 @@ test('identity permits only assigned context and exact tenant, not role names su
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const url='http://127.0.0.1:'+server.address().port;
   const request=async(path,b,cookie='')=>{const r=await fetch(url+path,{method:b?'POST':'GET',headers:{...(b?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:b?JSON.stringify(b):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  const login=role=>request('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>request('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(cookie,operation,params={})=>request('/api/action',{type:'identity',operation,...params},cookie);
   const view=cookie=>request('/api/state',null,cookie);
   try{
@@ -54,8 +54,8 @@ test('identity permits only assigned context and exact tenant, not role names su
     assert.equal((await act(athlete.cookie,'resolveReport',{id:report.id})).status,403);
     assert.equal((await act(coach.cookie,'resolveReport',{id:report.id})).status,200);
     assert(!((await view(coach.cookie)).data.identity.reportList.some(r=>r.id===report.id)));
-    const exportData=await request('/api/account',{operation:'export',password:'DemoLive2026!'},athlete.cookie);assert.equal(exportData.status,200);assert(exportData.data.identity.grants.every(g=>g.userId==='demo-athlete'));
-    assert.equal((await request('/api/account',{operation:'delete',password:'DemoLive2026!',confirm:true},gym.cookie)).status,409);
+    const exportData=await request('/api/account',{operation:'export',password:demoPassword},athlete.cookie);assert.equal(exportData.status,200);assert(exportData.data.identity.grants.every(g=>g.userId==='demo-athlete'));
+    assert.equal((await request('/api/account',{operation:'delete',password:demoPassword,confirm:true},gym.cookie)).status,409);
     assert.equal((await fetch(url+'/core/identity-ui.js')).status,200);
     for(const lang of langs)assert.match(identityPage({state:north.data,t:k=>tr(k,lang),h:String,btn:()=>''}),/North Fitness/);
   }finally{await new Promise(resolve=>server.close(resolve));db.close()}

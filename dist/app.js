@@ -9,6 +9,7 @@ import {coachingProgramForm} from './core/coaching-ui.js';
 import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
 import {programPayload,programFilter} from './core/programs-ui.js';
+import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer} from './core/training-ui.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 let stateRevision=0,chatMode='personal',clubChatId=null;
@@ -95,10 +96,17 @@ const form=(type,inner,label='save')=>`<form class="form" data-form="${type}">${
 const imageField=()=>`<label>${t('image')}<input type="file" name="image" accept="image/png,image/jpeg,image/webp"></label>`;
 async function imageData(file){if(!file?.size)return '';if(file.size>12*1024*1024)throw new Error(t('imageLarge'));const src=URL.createObjectURL(file);try{const im=new Image();im.src=src;await im.decode();const canvas=document.createElement('canvas'),ratio=Math.min(1,900/Math.max(im.width,im.height));canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.72);if(data.length>=400000)data=canvas.toDataURL('image/jpeg',.4);if(data.length>=400000)throw new Error(t('imageLarge'));return data}finally{URL.revokeObjectURL(src)}}
 async function act(type,b={}){if(busy)return;busy=true;const revision=++stateRevision;try{const next=await api('action',{type,...b});if(revision!==stateRevision)return false;state=next;render();return true}catch(e){toast(e.message||t('error'));return false}finally{busy=false}}
-async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'&&!state.dashboard?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
+async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();resetTrainingUI();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'&&!state.dashboard?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
+    case 'trainingUI':if(state?.training&&!config.production){trainingUI(state.me.id,op,id);render()}break;
+    case 'trainingAction':if(state?.training&&!config.production){
+      const confirmOps=['catalogArchive','planArchive','blockRemove','cancel','sessionDelete','progressApply'];
+      if(confirmOps.includes(op)&&!confirm(t('train_confirm')))break;
+      const ok=await act('training',{operation:op,id,sessionId:id,blockId:el.dataset.block,direction:Number(el.dataset.direction),index:Number(el.dataset.index),itemIndex:Number(el.dataset.item),kg:Number(el.dataset.kg),progression:el.dataset.progression==='true',confirm:true});
+      if(ok&&op==='planCopy'){trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);render()}
+    }break;
     case 'programAction':if(!config.production&&state.programs){
       if(op==='download'){const r=state.programs.items.find(x=>x.module==='library'&&x.id===id);if(r){const url=URL.createObjectURL(new Blob([r.title+'\n'+r.author+'\n'+r.rightsNote+'\n\n'+r.content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='musclivo-'+r.id+'.txt';a.click();URL.revokeObjectURL(url)}break;}
       if(!['delete','archive'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true'});
@@ -138,7 +146,7 @@ document.addEventListener('click',async e=>{
     case 'authMode':authEmail=$('input[name=email]')?.value||authEmail;authMode=id;render();break;
     case 'resend':await sign({mode:'resend',email:$('input[name=email]')?.value||authEmail,lang});break;
     case 'demo':await sign({mode:'demo',role:id,lang});break;
-    case 'logout':++stateRevision;await api('logout',{});state=null;page='home';chatId=null;chatMode='personal';clubChatId=null;render();break;
+    case 'logout':resetTrainingUI();++stateRevision;await api('logout',{});state=null;page='home';chatId=null;chatMode='personal';clubChatId=null;render();break;
     case 'feed':feed=id;render();break;
     case 'liveTab':liveTab=id;render();break;
     case 'setReady':await act('status',{status:'ready'});break;
@@ -178,6 +186,13 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='trainingFilter'){if(state?.training&&!config.production){trainingUI(state.me.id,'filter',{query:String(data.query||'').slice(0,100),equipment:fd.getAll('equipment'),muscle:data.muscle,level:data.level,secondary:data.secondary});render()}return}
+  if(type==='training'){
+    if(!state?.training||config.production)return;
+    const op=data.operation;if(op==='planAssign'&&!confirm(t('train_assignConfirm')))return;
+    const ok=await act('training',trainingPayload(data));
+    if(ok){if(op==='start')trainingUI(state.me.id,'tab','live');else if(op==='finish')trainingUI(state.me.id,'tab','progress');else if(op==='planCreate')trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);else if(['blockAdd','blockUpdate'].includes(op))trainingUI(state.me.id,'block','');else if(['catalogCreate','catalogUpdate'].includes(op))trainingUI(state.me.id,'edit','');render()}return;
+  }
   if(type==='programFilter'){if(state&&!config.production){programFilter(state.me.id,data);render()}return}
   if(type==='programs'){if(!config.production&&state.programs&&(!(data.operation==='share'&&data.linkId!=='none')||confirm(t('programShareConfirm'))))await act('programs',programPayload(data));return}
   if(['clubChatCreate','clubChatInvite','clubChatMessage'].includes(type)){if(!config.production&&state.clubChat){const operation={clubChatCreate:'create',clubChatInvite:'invite',clubChatMessage:'send'}[type];await act('clubChat',{...data,operation,clubId:state.clubChat.clubId})}return;}
@@ -201,7 +216,13 @@ document.addEventListener('submit',async e=>{
   }catch(err){toast(err.message||t('error'))}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+let trainingDrag=null;
+document.addEventListener('dragstart',e=>{const row=e.target.closest('[data-drag-block]');if(row&&state?.training&&!config.production){trainingDrag={plan:row.dataset.plan,block:row.dataset.dragBlock};e.dataTransfer?.setData('text/plain',trainingDrag.block)}});
+document.addEventListener('dragover',e=>{if(trainingDrag&&e.target.closest('[data-drag-block]'))e.preventDefault()});
+document.addEventListener('drop',async e=>{const row=e.target.closest('[data-drag-block]'),src=trainingDrag;trainingDrag=null;if(!src||!row||!state?.training||config.production||row.dataset.plan!==src.plan)return;e.preventDefault();if(row.dataset.dragBlock!==src.block)await act('training',{operation:'blockMoveTo',id:src.plan,blockId:src.block,targetBlockId:row.dataset.dragBlock})});
+document.addEventListener('dragend',()=>{trainingDrag=null});
+setInterval(()=>{if(state&&page==='trainingPro')updateTrainingTimer()},1000);
 async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'&&!state.dashboard?'admin':'home'}catch{}render()}
 init();
-setInterval(async()=>{if(!state||busy||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
+setInterval(async()=>{if(!state||busy||(page==='trainingPro'&&document.querySelector('.training-form details[open],.main-content details[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
 

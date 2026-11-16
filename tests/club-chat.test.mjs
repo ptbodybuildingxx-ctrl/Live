@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {clubChatPage} from '../dist/core/club-chat-ui.js';
 import {tr,langs,dictionary} from '../dist/i18n.js';
 
@@ -8,7 +8,7 @@ test('club rooms, custom group consent, role and club isolation, reporting and r
   const {server,db}=createApp({dbPath:':memory:'});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const req=async(path,body,cookie)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(cookie,type,b)=>req('/api/action',{type,...b},cookie),chat=(cookie,b)=>act(cookie,'clubChat',b),view=cookie=>req('/api/state',null,cookie),change=(cookie,context)=>act(cookie,'identity',{operation:'switch',context});
   const room=(s,category)=>s.clubChat.groups.find(g=>g.builtin&&g.category===category), groups=s=>s.clubChat.groups.map(g=>g.category).sort();
   try{
@@ -75,8 +75,8 @@ test('club rooms, custom group consent, role and club isolation, reporting and r
     assert.equal((await act(a.cookie,'chatReport',{conversationId:direct.id,messageId:message.id,reason:'Direct report'})).status,200);
     assert((await view(admin.cookie)).data.identity.reportList.some(r=>r.targetType==='directMessage'&&r.evidence.text===message.text));
     for(const lang of langs){const t=k=>tr(k,lang),state=(await view(g.cookie)).data,html=clubChatPage({state,selected:groupId,t,h:String,btn:()=>'',displayDate:String});assert.match(html,/Private bookkeeping/);assert.match(html,/Group initial message/);assert(!html.includes('Shared group reply'));}
-    const exported=await req('/api/account',{operation:'export',password:'DemoLive2026!'},g.cookie);assert(exported.data.clubChat.messages.every(m=>m.owner==='demo-gym'));
-    const deleted=await req('/api/account',{operation:'delete',password:'DemoLive2026!',confirm:true},a.cookie);assert.equal(deleted.status,200);
+    const exported=await req('/api/account',{operation:'export',password:demoPassword},g.cookie);assert(exported.data.clubChat.messages.every(m=>m.owner==='demo-gym'));
+    const deleted=await req('/api/account',{operation:'delete',password:demoPassword,confirm:true},a.cookie);assert.equal(deleted.status,200);
     assert.equal((await fetch(base+'/core/club-chat-ui.js')).status,200);
     for(const k of Object.keys(dictionary).filter(k=>k.startsWith('clubChat')||k.startsWith('clubRoom_')))assert(dictionary[k].every(Boolean),k);
   }finally{await new Promise(resolve=>server.close(resolve));db.close()}

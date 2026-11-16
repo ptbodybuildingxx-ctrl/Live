@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {clubPage,financePage,clubFormFields,clubFormPayload} from '../dist/core/club-ops-ui.js';
 import {tr,langs,dictionary} from '../dist/i18n.js';
 
@@ -8,7 +8,7 @@ test('club operations and manual finance permissions, isolation, invoices and au
   const {server,db}=createApp({dbPath:':memory:'});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const req=async(path,body,cookie)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(cookie,type,b)=>req('/api/action',{type,...b},cookie), ops=(cookie,b)=>act(cookie,'clubOps',b), view=cookie=>req('/api/state',null,cookie);
   const change=(cookie,context)=>act(cookie,'identity',{operation:'switch',context});
   const branch={name:'Test Iron Branch',city:'Test city',address:'Test address'},plan={name:'Test monthly',period:'monthly',currency:'SEK',amountMinor:45000};
@@ -63,11 +63,11 @@ test('club operations and manual finance permissions, isolation, invoices and au
     assert.equal((await ops(s.cookie,{operation:'ledgerVoid',id:expenseId,reason:'Test correction'})).status,200);
     const final=(await view(g.cookie)).data;assert(final.clubOps.finance.audit.some(a=>a.operation==='invoiceVoid'));assert(final.clubOps.audit.some(a=>a.operation==='membershipCreate'));
     for(const lang of langs){const t=k=>tr(k,lang),ctx={state:final,t,h:String,btn:()=>'',lang};assert.match(clubPage(ctx),/Iron Branch Updated/);assert.match(financePage(ctx),/Test invoice/);assert.match(clubFormFields('planUpdate',final.clubOps.plans[0],final.clubOps,t,String),/520.00/)}
-    const exported=await req('/api/account',{operation:'export',password:'DemoLive2026!'},a.cookie);assert.equal(exported.data.clubOps.memberships[0].id,membershipId);assert.equal(exported.data.clubOps.invoices[0].id,inv.id);assert(!exported.data.clubOps.ledger);
+    const exported=await req('/api/account',{operation:'export',password:demoPassword},a.cookie);assert.equal(exported.data.clubOps.memberships[0].id,membershipId);assert.equal(exported.data.clubOps.invoices[0].id,inv.id);assert(!exported.data.clubOps.ledger);
     const memberGrant=(await view(g.cookie)).data.identity.roster.find(r=>r.userId==='demo-athlete'&&r.role==='member').id;
     assert.equal((await act(g.cookie,'identity',{operation:'revoke',id:memberGrant})).status,200);
     assert.equal((await view(g.cookie)).data.clubOps.memberships[0].status,'cancelled');assert(!(await view(a.cookie)).data.clubOps);
-    assert.equal((await req('/api/account',{operation:'delete',password:'DemoLive2026!',confirm:true},a.cookie)).status,200);
+    assert.equal((await req('/api/account',{operation:'delete',password:demoPassword,confirm:true},a.cookie)).status,200);
     const cleaned=(await view(g.cookie)).data.clubOps;assert.equal(cleaned.memberships.length,0);assert.equal(cleaned.finance.invoices[0].memberId,null);
     assert.equal((await fetch(base+'/core/club-ops-ui.js')).status,200);
     for(const k of Object.keys(dictionary).filter(k=>k.startsWith('club')))assert(dictionary[k].every(Boolean),k);

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {dashboardFlags} from '../dashboard.mjs';
 import {dashboardCompact,setDashboardCompact,dashboardPage,dashboardSettings} from '../dist/core/dashboard.js';
 import {tr,langs,dictionary} from '../dist/i18n.js';
@@ -13,7 +13,7 @@ const withApp=async(features,run)=>{
     const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});
     return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};
   };
-  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(cookie,operation,params={})=>req('/api/action',{type:'identity',operation,...params},cookie);
   const view=cookie=>req('/api/state',null,cookie);
   try{await run({req,login,act,view,base})}finally{await new Promise(resolve=>server.close(resolve));db.close()}

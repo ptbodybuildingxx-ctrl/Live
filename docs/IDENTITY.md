@@ -1,6 +1,6 @@
 # Local identity and access (Sprint 02)
 
-Existing accounts and login sessions are preserved. Local SQLite state is migrated on startup to a separate identity registry; password hashes and the existing profile role are unchanged. No Supabase or external API is used.
+Existing non-demo accounts and login sessions are preserved. Local SQLite state is migrated on startup to a separate identity registry; ordinary account password hashes and profile roles are unchanged. Seeded demo credential hashes rotate and demo sessions are revoked at each startup; demo records remain intact. No Supabase or external API is used.
 
 ## Role policy
 

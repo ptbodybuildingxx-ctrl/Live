@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {modules,canOpen,allowedModules,filterCoaches,samples} from '../dist/core/modules.js';
 import {tr,langs,dictionary} from '../dist/i18n.js';
 import {workspacePage,toggleSample,resetWorkspace} from '../dist/core/workspace.js';
@@ -35,12 +35,12 @@ test('local server serves modules and validates coach language edits',async()=>{
   try{
     for(const path of ['/core/modules.js','/core/workspace.js','/languages/ar.js','/languages/en.js','/languages/sv.js'])assert.equal((await req(path)).status,200);
     assert.equal((await req('/core/unknown.js')).status,404);
-    const auth=await req('/api/auth',{mode:'login',email:'coach@demo.local',password:'DemoLive2026!'});
+    const auth=await req('/api/auth',{mode:'login',email:'coach@demo.local',password:demoPassword});
     const cookie=auth.headers.get('set-cookie').split(';')[0];
     const edit=await req('/api/action',{type:'profile',spokenLanguages:['ar','sv','ar']},cookie);
     assert.equal(edit.status,200);assert.deepEqual((await edit.json()).me.spokenLanguages,['ar','sv']);
     assert.equal((await req('/api/action',{type:'profile',spokenLanguages:['invalid']},cookie)).status,400);
-    const athlete=await req('/api/auth',{mode:'login',email:'athlete@demo.local',password:'DemoLive2026!'});
+    const athlete=await req('/api/auth',{mode:'login',email:'athlete@demo.local',password:demoPassword});
     assert.equal((await req('/api/action',{type:'profile',spokenLanguages:['en']},athlete.headers.get('set-cookie').split(';')[0])).status,400);
   }finally{await new Promise(resolve=>server.close(resolve));db.close()}
 });

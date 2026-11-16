@@ -14,3 +14,14 @@
 .coaching-exercises{margin:0;padding-inline-start:22px;overflow-wrap:anywhere}.coaching-exercises li+li{margin-top:5px}
 .chat-message-actions{gap:5px;margin-top:6px}.chat-message-actions .chip{min-height:28px;font-size:11px;padding:4px 7px}.bubble.mine .chat-message-actions .chip{color:var(--on);border-color:currentColor}.report-excerpt{margin:8px 0;padding:8px 12px;border-inline-start:3px solid var(--gold);background:var(--bg);white-space:pre-wrap;overflow-wrap:anywhere}.chat-list button{overflow-wrap:anywhere}
 
+.training-cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.training-cards .card,.training-block,.training-form{min-width:0;overflow-wrap:anywhere}
+.training-filter{border:1px solid var(--line);border-radius:10px;display:flex;flex-wrap:wrap;gap:12px;padding:12px;min-width:0}
+.training-form details{padding:10px;min-width:0}
+.training-form details summary,.training-cards summary{cursor:pointer;font-weight:600}
+.training-form .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,135px),1fr))}
+.training-form select,.training-form input,.training-form textarea{width:100%;min-width:0}
+.training-block[draggable=true]{cursor:grab}
+.training-block[draggable=true]:active{cursor:grabbing}
+.training-live progress{width:100%;accent-color:var(--green)}
+@media(max-width:740px){.training-cards{grid-template-columns:1fr}.training-live .grid3{grid-template-columns:repeat(3,minmax(0,1fr))}}

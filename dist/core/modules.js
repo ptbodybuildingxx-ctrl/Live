@@ -1,6 +1,7 @@
 // Local-only module registry. These are navigation previews, not release authorization.
 export const modules = [
   {id:'train',icon:'dumbbell',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['workoutPlans','workoutLog','workoutProgress']},
+  {id:'trainingPro',icon:'dumbbell',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['exerciseLibrary','trainingBuilder','trainingLive','trainingProgress']},
   {id:'nutrition',icon:'zap',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['mealLog','calories','water']},
   {id:'health',icon:'check',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['habits','sleep','measurements']},
   {id:'rehab',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['injuryLog','rehabPlans','consent']},

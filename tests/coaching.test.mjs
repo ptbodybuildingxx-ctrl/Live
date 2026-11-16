@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {coachingPanel,coachingProgramForm,assignedPrograms} from '../dist/core/coaching-ui.js';
 import {tr,langs,dictionary} from '../dist/i18n.js';
 
@@ -8,7 +8,7 @@ test('mutual coaching consent, assigned programs, workout-only sharing and revoc
   const {server,db}=createApp({dbPath:':memory:'});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const req=async(path,body,cookie)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(cookie,type,b)=>req('/api/action',{type,...b},cookie);
   const coachAct=(cookie,b)=>act(cookie,'coaching',b);
   const view=cookie=>req('/api/state',null,cookie);
@@ -54,7 +54,7 @@ test('mutual coaching consent, assigned programs, workout-only sharing and revoc
     assert.equal((await coachAct(a.cookie,{operation:'end',linkId})).status,200);
     assert.deepEqual((await view(c.cookie)).data.coaching.links,[]);assert.equal((await view(a.cookie)).data.coaching.pastPrograms.length,1);
     assert.equal((await coachAct(c.cookie,{operation:'programUpdate',linkId,programId:p.id,...program})).status,404);
-    const exported=await req('/api/account',{operation:'export',password:'DemoLive2026!'},c.cookie);assert.equal(exported.data.coaching.programs.length,0);
+    const exported=await req('/api/account',{operation:'export',password:demoPassword},c.cookie);assert.equal(exported.data.coaching.programs.length,0);
     const reinvite=await coachAct(c.cookie,{operation:'invite',target:'demo-athlete'});assert.equal(reinvite.status,200);const nextId=reinvite.data.coaching.links[0].id;
     assert.equal((await coachAct(a.cookie,{operation:'respond',linkId:nextId,accept:true})).status,200);
     assert.equal((await act(a.cookie,'block',{target:'demo-coach'})).status,200);
@@ -63,7 +63,7 @@ test('mutual coaching consent, assigned programs, workout-only sharing and revoc
     await act(a.cookie,'block',{target:'demo-coach'});assert.deepEqual((await view(c.cookie)).data.coaching.links,[]);
     const ask=await coachAct(c.cookie,{operation:'invite',target:'demo-sara'});const saraLink=ask.data.coaching.links[0].id;
     assert.equal((await coachAct(s.cookie,{operation:'respond',linkId:saraLink,accept:false})).status,200);assert.deepEqual((await view(c.cookie)).data.coaching.links,[]);
-    assert.equal((await req('/api/account',{operation:'delete',password:'DemoLive2026!',confirm:true},a.cookie)).status,200);
+    assert.equal((await req('/api/account',{operation:'delete',password:demoPassword,confirm:true},a.cookie)).status,200);
     const stored=JSON.parse(db.prepare('SELECT data FROM state WHERE id=1').get().data);assert(!stored.coaching.links.some(l=>l.member==='demo-athlete'));assert(!stored.coaching.programs.some(p=>p.linkId===linkId));
     assert.equal((await fetch(base+'/core/coaching-ui.js')).status,200);
     for(const k of Object.keys(dictionary).filter(k=>k.startsWith('coaching')))assert(dictionary[k].every(Boolean),k);

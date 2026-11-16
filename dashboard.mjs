@@ -15,7 +15,7 @@ export function dashboardView(s,id,identity,flags,coaching,clubOps) {
     metric('xp',s.profiles.find(p=>p.id===id)?.xp??0);
     metric('dashboardJoinedChallenges',s.challenges.filter(c=>Object.hasOwn(c.members,id)).length);
     metric('dashboardUpcomingSessions',s.sessions.filter(x=>x.at>Date.now()&&(x.owner===id||x.participants.includes(id))).length);
-    link('train','train');link('nutrition','nutrition');link('health','health');
+    link('train','train');link('trainingPro','trainingPro');link('nutrition','nutrition');link('health','health');
     if(active.role==='member')link('coachingManagement','coaches');
   }
   if(has('coach.programs')){const planned=!!active.clubId||s.profiles.find(p=>p.id===id)?.verified!==true;link('coachPrograms','coaches',planned);link('traineeProgress','coaches',planned)}

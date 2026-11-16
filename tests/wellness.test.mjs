@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {wellnessKinds} from '../dist/core/wellness-schema.js';
 import {wellnessPage,wellnessForm,wellnessFormRecord} from '../dist/core/wellness-ui.js';
 import {tr,langs,dictionary} from '../dist/i18n.js';
@@ -21,13 +21,13 @@ async function open(dbPath){
   const {server,db}=createApp({dbPath});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const req=async(path,body,cookie)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  return {db,base,req,login:role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'}),action:(cookie,b)=>req('/api/action',{type:'wellness',...b},cookie),view:cookie=>req('/api/state',null,cookie),close:async()=>{await new Promise(resolve=>server.close(resolve));db.close()}};
+  return {db,base,req,login:role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword}),action:(cookie,b)=>req('/api/action',{type:'wellness',...b},cookie),view:cookie=>req('/api/state',null,cookie),close:async()=>{await new Promise(resolve=>server.close(resolve));db.close()}};
 }
 test('local record CRUD for all seven kinds, owner isolation, validation, persistence and account deletion',async()=>{
   const dir=mkdtempSync(join(process.cwd(),'wellness-test-'));let app;
   try{
     app=await open(join(dir,'test.sqlite'));
-    const [a,c,g,s,admin]=await Promise.all(['athlete','coach','gym','sara','admin'].map(app.login));
+    let [a,c,g,s,admin]=await Promise.all(['athlete','coach','gym','sara','admin'].map(app.login));
     assert.deepEqual(a.data.wellness,{enabled:false,records:[]});assert(!g.data.wellness);assert(!admin.data.wellness);
     const act=(b,cookie=a.cookie)=>app.action(cookie,b);
     assert.equal((await act({operation:'create',kind:'plan',record:fixtures.plan})).status,403);
@@ -56,12 +56,14 @@ test('local record CRUD for all seven kinds, owner isolation, validation, persis
     const switched=await app.req('/api/action',{type:'identity',operation:'switch',context:'club-iron:member'},a.cookie);assert.equal(switched.status,200);assert(!switched.data.wellness);
     assert.equal((await act({operation:'delete',id:ids.workout})).status,403);
     const personal=await app.req('/api/action',{type:'identity',operation:'switch',context:'personal:member'},a.cookie);assert.equal(personal.data.wellness.records.length,7);
-    const exported=await app.req('/api/account',{operation:'export',password:'DemoLive2026!'},a.cookie);assert.equal(exported.data.wellness.records.length,7);
-    const otherExport=await app.req('/api/account',{operation:'export',password:'DemoLive2026!'},c.cookie);assert.equal(otherExport.data.wellness.records.length,0);
+    const exported=await app.req('/api/account',{operation:'export',password:demoPassword},a.cookie);assert.equal(exported.data.wellness.records.length,7);
+    const otherExport=await app.req('/api/account',{operation:'export',password:demoPassword},c.cookie);assert.equal(otherExport.data.wellness.records.length,0);
     for(const lang of langs){const context={state:aState,id:'nutrition',t:k=>tr(k,lang),h:String,btn:()=>'',today:date};const html=wellnessPage(context);assert.match(html,/450/);assert.match(html,/500/);assert.match(html,/Test meal/);assert.match(wellnessForm('meal',fixtures.meal,context.t,String),/450/)}
     assert.equal((await fetch(app.base+'/core/wellness-ui.js')).status,200);
     assert.equal((await fetch(app.base+'/core/wellness-schema.js')).status,200);
     await app.close();app=await open(join(dir,'test.sqlite'));
+    assert.equal((await app.view(a.cookie)).status,401);
+    [a,c,s]=await Promise.all(['athlete','coach','sara'].map(app.login));
     assert.equal((await app.view(a.cookie)).data.wellness.records.length,7);
     assert.equal((await act({operation:'delete',id:ids.measurement})).status,200);
     assert.equal((await app.view(a.cookie)).data.wellness.records.length,6);
@@ -71,7 +73,7 @@ test('local record CRUD for all seven kinds, owner isolation, validation, persis
     await act({operation:'enable',confirm:true},s.cookie);await act({operation:'create',kind:'plan',record:fixtures.plan},s.cookie);
     // Sara owns a club, so exercise account deletion using a non-owner coach account.
     await act({operation:'create',kind:'plan',record:fixtures.plan},c.cookie);
-    assert.equal((await app.req('/api/account',{operation:'delete',password:'DemoLive2026!',confirm:true},c.cookie)).status,200);
+    assert.equal((await app.req('/api/account',{operation:'delete',password:demoPassword,confirm:true},c.cookie)).status,200);
     const stored=JSON.parse(app.db.prepare('SELECT data FROM state WHERE id=1').get().data);
     assert(!stored.wellness.records.some(r=>r.owner==='demo-coach'));assert(!stored.wellness.enabled.includes('demo-coach'));assert(stored.wellness.records.some(r=>r.owner==='demo-sara'));
   }finally{if(app)await app.close();rmSync(dir,{recursive:true,force:true})}

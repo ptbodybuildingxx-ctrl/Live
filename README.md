@@ -16,6 +16,8 @@
 
 **Sprints 08–10 — local events, campaigns, library, rehab and administration:** threshold events with waitlists, Ramadan/StartFit enrollment and check-ins, rights-confirmed text resources, consent-scoped test injury records, local rollout controls and a verified SQLite backup test. All 19 automated tests pass locally. Public rollout and real-device acceptance remain gated. See [Programs and administration](docs/PROGRAMS-ADMIN.md).
 
+**Sprints 11–14 — local Training Pro:** 150 categorized exercises, multilingual search, 12 methods, phased custom plans, coach assignment, live set-by-set recording and rest timer, workout history, personal records and confirm-only progression suggestions. All 25 automated tests pass locally, including local demo credential rotation. Media and professionally reviewed exercise instructions are pending; production remains gated. See [Training Pro](docs/TRAINING-PRO.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا
@@ -34,7 +36,7 @@ npm test
 
 ## Demo accounts / الحسابات التجريبية
 
-يمكن تسجيل الدخول بضغطة زر من شاشة الترحيب. كلمة المرور لجميع حسابات التجربة: `DemoLive2026!`
+يمكن تسجيل الدخول بضغطة زر من شاشة الترحيب على الجهاز المحلي فقط. لا توجد كلمات مرور ثابتة في الشيفرة. يتم توليد كلمات مرور عشوائية لحسابات التجربة وتدويرها عند كل تشغيل؛ جلسات التجربة السابقة تنتهي دون حذف بياناتها. لاختبار عمليات التصدير والحذف التي تتطلب كلمة مرور، يمكن ضبط متغير البيئة المحلي `ML_LOCAL_DEMO_PASSWORD` بقيمة خاصة من 16 إلى 128 حرفًا قبل التشغيل. لا تحفظ القيمة في المستودع، ولا تستخدم حسابات التجربة أو هذا المتغير في الإنتاج.
 
 | Email | Role |
 | --- | --- |
@@ -44,7 +46,7 @@ npm test
 | sara@demo.local | Athlete |
 | admin@demo.local | Local administrator |
 
-لا تستخدم كلمات المرور التجريبية عند النشر. الخادم مرتبط بعنوان loopback فقط.
+حسابات التجربة محجوبة في الإنتاج، والخادم مرتبط بعنوان loopback فقط.
 
 ## الميزات المحلية
 

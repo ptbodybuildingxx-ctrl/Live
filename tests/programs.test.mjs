@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createApp} from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {programPage,programPayload} from '../dist/core/programs-ui.js';
 import {tr,langs} from '../dist/i18n.js';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -13,7 +13,7 @@ test('campaigns, threshold and waitlist events, club isolation, publication righ
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const req=async(path,body,cookie)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(u,type,b)=>req('/api/action',{type,...b},u.cookie),run=(u,module,operation,b={})=>act(u,'programs',{module,operation,...b}),view=u=>req('/api/state',null,u.cookie),switchRole=(u,context)=>act(u,'identity',{operation:'switch',context});
   const find=(v,title)=>v.data.programs.items.find(r=>r.title===title);
   const day=new Date().toISOString().slice(0,10),baseFields={description:'Local test content',language:'en',start:day,end:day};
@@ -65,7 +65,7 @@ test('rehab test records are personal, consent-scoped, exportable and cleared wi
   const {server,db}=createApp({dbPath:':memory:'});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const req=async(path,body,cookie)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
-  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>req('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(u,type,b)=>req('/api/action',{type,...b},u.cookie),run=(u,operation,b={})=>act(u,'programs',{module:'rehab',operation,...b}),view=u=>req('/api/state',null,u.cookie);
   try{
     const [member,coach,admin,gym]=await Promise.all(['athlete','coach','admin','gym'].map(login));
@@ -86,7 +86,7 @@ test('rehab test records are personal, consent-scoped, exportable and cleared wi
     assert(!JSON.stringify((await view(coach)).data).includes(secret));
     await act(coach,'identity',{operation:'switch',context:'personal:coach'});
     await run(member,'share',{id,linkId:null});assert(!JSON.stringify((await view(coach)).data).includes(secret));
-    const ex=await req('/api/account',{operation:'export',password:'DemoLive2026!'},member.cookie);assert.equal(ex.data.programs.rehab[0].note,secret);
+    const ex=await req('/api/account',{operation:'export',password:demoPassword},member.cookie);assert.equal(ex.data.programs.rehab[0].note,secret);
     await act(member,'wellness',{operation:'clear',confirm:true});assert.equal((await view(member)).data.programs.rehab.records.length,0);
   }finally{await new Promise(resolve=>server.close(resolve));db.close()}
 });
@@ -99,7 +99,7 @@ test('local program data survives a verified SQLite backup and cannot be reused 
     const s=JSON.parse(db.prepare('SELECT data FROM state').get().data);s.programs={flags:{library:false},items:[],entries:[],rehab:[],audit:[]};
     db.prepare('UPDATE state SET data=?').run(JSON.stringify(s));db.prepare('VACUUM INTO ?').run(backup);db.close();
     const restored=new DatabaseSync(backup);assert.equal(restored.prepare('PRAGMA integrity_check').get().integrity_check,'ok');assert.equal(JSON.parse(restored.prepare('SELECT data FROM state').get().data).programs.flags.library,false);restored.close();
-    assert.throws(()=>createApp({dbPath:backup,release:{production:true,origin:'https://test.example',adminEmail:'owner@test.example',adminPassword:'Test-Only-Password-Long',contact:'support@test.example',mailer:async()=>{}}}),/Release blocked/);
+    assert.throws(()=>createApp({dbPath:backup,release:{production:true,origin:'https://test.example',adminEmail:'owner@test.example',adminPassword:newTestPassword(),contact:'support@test.example',mailer:async()=>{}}}),/Release blocked/);
     assert.deepEqual(programPayload({minimum:'2',capacity:'5',progress:'20',rights:'on',linkId:'none'}),{minimum:2,capacity:5,progress:20,rights:true,linkId:null});
   }finally{rmSync(dir,{recursive:true,force:true})}
 });

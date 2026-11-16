@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createApp } from '../server.mjs';
+import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 
 test('local MVP: accounts, permissions, social, matches, chats and challenges',async()=>{
   const {server,db}=createApp({dbPath:':memory:'});
@@ -10,7 +10,7 @@ test('local MVP: accounts, permissions, social, matches, chats and challenges',a
     const res=await fetch(url+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Cookie:token}:{})},body:body?JSON.stringify(body):undefined});
     return {status:res.status,body:await res.json(),cookie:res.headers.get('set-cookie')?.split(';')[0]};
   };
-  const login=role=>request('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const login=role=>request('/api/auth',{mode:'login',email:role+'@demo.local',password:demoPassword});
   const act=(token,type,p={})=>request('/api/action',{type,...p},token);
   try{
     assert.equal((await fetch(url)).status,200);
@@ -42,7 +42,7 @@ test('local MVP: accounts, permissions, social, matches, chats and challenges',a
     assert.equal((await act(a.cookie,'checkin',{id:'challenge-1'})).status,409);
     assert.equal((await act(a.cookie,'session',{title:'Not coach',at:Date.now()+3600000})).status,403);
     assert.equal((await act(c.cookie,'session',{title:'Test training',sport:'Strength',at:Date.now()+3600000})).status,200);
-    const newUser=await request('/api/auth',{mode:'register',name:'Test coach',email:'test@example.local',password:'TestPass123!',role:'coach',lang:'sv'});
+    const newUser=await request('/api/auth',{mode:'register',name:'Test coach',email:'test@example.local',password:newTestPassword(),role:'coach',lang:'sv'});
     assert.equal(newUser.status,200);assert.equal(newUser.body.me.lang,'sv');assert(!newUser.body.me.verified);
     const v=await act(newUser.cookie,'verification',{text:'Training certificate'});assert.equal(v.status,200);
     assert.equal((await act(admin.cookie,'admin',{operation:'verify',id:v.body.verifications[0].id,accept:true})).status,200);
