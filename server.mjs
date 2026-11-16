@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { readReleaseConfig } from './release.mjs';
 import {ensureIdentity,identityView,identityAction,identityExport,removeIdentity,can} from './identity.mjs';
 import {dashboardFlags,dashboardView} from './dashboard.mjs';
+import {masterAdminView,masterAdminAction} from './master-admin.mjs';
 import {wellnessView,wellnessAction,wellnessExport,removeWellness} from './wellness.mjs';
 import {coachingView,coachingAction,coachingExport,removeCoaching,revokeCoachingPair,disableWorkoutSharing} from './coaching.mjs';
 import {clubOpsView,clubOpsAction,clubOpsExport,removeClubOps,revokeMembership} from './club-ops.mjs';
@@ -79,6 +80,7 @@ function snapshot(s,id,flags){
   const programs=programsView(s,id);
   const training=trainingView(s,id);
   const nutrition=s.identity?nutritionView(s,id):undefined;
+  const masterAdmin=masterAdminView(s,id,{programs,training,nutrition});
   const me=profile(s,id);
   const profiles=s.profiles.filter(p=>p.role!=='admin'&&visible(s,p.id,id,'profile')).map(p=>safeProfile(s,p,id));
   const posts=s.posts.filter(p=>visible(s,p.owner,id,'posts')).slice(0,50).map(p=>({...p,comments:p.comments.filter(c=>!blocked(s,c.owner,id)).slice(-100)}));
@@ -91,6 +93,7 @@ function snapshot(s,id,flags){
     ...(programs?{programs}:{}),
     ...(training?{training}:{}),
     ...(nutrition?{nutrition}:{}),
+    ...(masterAdmin?{masterAdmin}:{}),
     ...(flags.smartDashboard&&identity?.active?{dashboard:dashboardView(s,id,identity,flags,coaching,clubOps)}:{}),
     stories:s.stories.filter(x=>x.at>now()-DAY&&visible(s,x.owner,id,'stories')),
     follows:s.follows.filter(x=>x.from===id||x.to===id),saved:s.saved.filter(x=>x.owner===id),
@@ -110,6 +113,7 @@ function action(s,id,b){
   const validTarget=()=>assert(other&&other.id!==id&&visible(s,other.id,id,'profile'),'Account unavailable',404);
   const toggle=(arr,find,create)=>{const i=arr.findIndex(find);if(i>=0)arr.splice(i,1);else arr.push(create)};
   switch(t){
+    case 'masterAdmin':masterAdminAction(s,id,b);break;
     case 'training':{assert(s.identity,'Local training unavailable',404);trainingAction(s,id,b);break;}
     case 'nutrition':{assert(s.identity,'Local nutrition unavailable',404);nutritionAction(s,id,b);break;}
     case 'programs':{assert(s.identity,'Local programs unavailable',404);programsAction(s,id,b);break;}
@@ -194,6 +198,15 @@ function action(s,id,b){
     case 'readNotifications':s.notifications.forEach(n=>{if(n.owner===id)n.read=true});break;
     case 'admin':{
       assert(me.role==='admin');
+      // Keep the legacy local screen compatible without bypassing the new role checks.
+      if(s.identity){
+        assert(can(s,id,'platform.admin'));
+        if(b.operation==='verify')masterAdminAction(s,id,b);
+        else if(b.operation==='suspend'){const u=profile(s,b.id);assert(u,'Account not found',404);masterAdminAction(s,id,{operation:'accountStatus',id:b.id,enabled:!u.suspended})}
+        else if(b.operation==='resolve')identityAction(s,id,{operation:'resolveReport',id:b.id});
+        else throw bad('Unknown admin operation');
+        break;
+      }
       if(b.operation==='verify'){const v=s.verifications.find(x=>x.id===b.id);assert(v&&v.state==='pending');v.state=b.accept===true?'approved':'rejected';profile(s,v.owner).verified=b.accept===true;}
       else if(b.operation==='suspend'){const u=profile(s,b.id);assert(u&&u.role!=='admin');u.suspended=!u.suspended;}
       else if(b.operation==='resolve'){const x=s.reports.find(r=>r.id===b.id);assert(x);x.state='resolved';}
@@ -399,6 +412,7 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
       names['/core/campaign-ui.js']='core/campaign-ui.js';
       names['/core/directory-ui.js']='core/directory-ui.js';
       names['/core/events-ui.js']='core/events-ui.js';
+      names['/core/master-admin-ui.js']='core/master-admin-ui.js';
       for(const style of ['tokens','base','responsive','modules','training','components'])names['/styles/'+style+'.css']='styles/'+style+'.css';
       const draftModules=['xdraw-engine','exercise-drawing-new','exercise-drawings','exercise-kinematics','exercise-drawing-corrections','exercise-drawing-legacy-tracks','exercise-drawing-anatomy','exercise-apparatus'];
       const draftModule=draftModules.find(name=>url.pathname==='/core/'+name+'.js');

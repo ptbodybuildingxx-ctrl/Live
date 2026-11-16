@@ -9,6 +9,7 @@ import {trainingPage} from './training-ui.js';
 import {nutritionPage} from './nutrition-ui.js';
 import {workspaceCard} from './disclosures.js';
 import {directoryPage,aboutPage,resetDirectoryFilters} from './directory-ui.js';
+import {resetMasterAdmin} from './master-admin-ui.js';
 
 // Deliberately temporary examples only. No health/finance data or credentials are stored here.
 const checked=new Map();
@@ -24,7 +25,7 @@ export function toggleCoachLanguage(state,language,currentLanguage){
   const key=sessionKey(state,'coaches'),current=selections.get(key)||[currentLanguage];
   selections.set(key,language==='all'?[]:current.includes(language)?current.filter(x=>x!==language):[...current,language]);
 }
-export function resetWorkspace(){checked.clear();selections.clear();resetDirectoryFilters()}
+export function resetWorkspace(){checked.clear();selections.clear();resetDirectoryFilters();resetMasterAdmin()}
 export function workspacePage({state,id,production,t,h,ic,btn,person,lang}){
   const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production).filter(m=>state.programs?.flags[['ramadan','startfit'].includes(m.id)?'campaigns':m.id]!==false||state.programs?.canAdmin);
   if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><p class="muted">${h(t('workspaceExpandHint'))}</p><div class="grid workspace-grid">${permitted.map(module=>workspaceCard({module,t,h,ic,btn})).join('')}</div></div>`;

@@ -33,6 +33,8 @@ file map and guidance on extending modules without duplicating style rules.
 
 **Events Pro:** public and club events with registration deadlines, optional FIFO waitlists, cancellation notices, attendance states, private participant reports and search filters. See [Events Pro](docs/EVENTS-PRO.md).
 
+**Master Admin Pro:** context-gated platform overview, searchable account management, verification decisions, local module rollout controls and a scoped audit history. See [Master Admin Pro](docs/MASTER-ADMIN-PRO.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

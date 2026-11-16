@@ -9,6 +9,7 @@ const choose=(v,list)=>{need(list.includes(v),'Invalid option');return v};
 const date=v=>{need(typeof v==='string'&&/^20\d\d-\d\d-\d\d$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,'Invalid date');return v};
 const empty=()=>({foods:[],logs:[],water:[],plans:[],recipes:[],goals:{},favorites:{},sharing:{},activePlans:{}});
 const read=s=>s.nutrition||empty(), write=s=>s.nutrition??=empty();
+const catalogAudit=(d,id,operation)=>{const entries=d.audit??=[];entries.unshift({actor:id,operation,at:Date.now()});entries.splice(1000)};
 const personal=(s,id)=>can(s,id,'personal.read');
 const enabled=(s,id)=>personal(s,id)&&!!s.wellness?.enabled.includes(id);
 const admin=(s,id)=>can(s,id,'platform.admin');
@@ -109,7 +110,7 @@ export function nutritionAction(s,id,b){
       return {id:key,owner:null,...foodBody({...old,...row})};
     });
     need(catalog.size+records.filter(r=>!catalog.has(r.id)).length<=5000,'Catalog capacity',429);
-    for(const row of records){const i=d.foods.findIndex(x=>x.id===row.id);if(i<0)d.foods.push(row);else d.foods[i]=row}return;
+    for(const row of records){const i=d.foods.findIndex(x=>x.id===row.id);if(i<0)d.foods.push(row);else d.foods[i]=row}catalogAudit(d,id,op);return;
   }
   if(['foodCreate','foodUpdate','foodArchive'].includes(op)){
     need(admin(s,id)||enabled(s,id),'Personal or admin context required',403);
@@ -120,7 +121,7 @@ export function nutritionAction(s,id,b){
     if(op==='foodCreate')need((publicScope?allFoods(s).filter(f=>f.owner===null):d.foods.filter(f=>f.owner===owner)).length<(publicScope?5000:500),'Food limit',429);
     const record=op==='foodArchive'?{...old,status:'archived'}:{id:old?.id||freshId(),owner,...foodBody(b)};
     const index=d.foods.findIndex(x=>x.id===record.id);
-    if(index<0)d.foods.push(record);else d.foods[index]=record;return;
+    if(index<0)d.foods.push(record);else d.foods[index]=record;if(publicScope)catalogAudit(d,id,op);return;
   }
   need(enabled(s,id),'Enable private personal records first',403);
   if(op==='share'){

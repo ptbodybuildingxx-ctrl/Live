@@ -14,6 +14,7 @@ import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
 import {programPayload,programFilter} from './core/programs-ui.js';
 import {updateDirectoryFilter} from './core/directory-ui.js';
+import {updateMasterAdminFilter,moveMasterAdminPage} from './core/master-admin-ui.js';
 import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer,updateTrainingPicker,updateTemplateFilter,rememberTrainingDraft,clearTrainingDraft} from './core/training-ui.js';
 import {nutritionUI,nutritionPayload,resetNutritionUI,updateNutritionPicker,showEnergyEstimate,fillSmartTargets} from './core/nutrition-ui.js';
 import {bindDrawingPreviews} from './core/xdraw-ui.js';
@@ -129,6 +130,7 @@ document.addEventListener('click',async e=>{
       if(ok&&op==='planCopy'){trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);render()}
     }break;
     case 'programAction':if(!config.production&&state.programs){
+      if(op==='flag'&&!confirm(t('programConfirm')))break;
       if(op==='eventCancel'&&!confirm(t('eventCancelConfirm')))break;
       if(op==='libraryPdfRemove'){if(confirm(t('programConfirm')))await libraryPdfChange(id,null,true);break}
       if(op==='download'){const r=state.programs.items.find(x=>x.module==='library'&&x.id===id);if(r){const url=URL.createObjectURL(new Blob([r.title+'\n'+r.author+'\n'+r.rightsNote+'\n\n'+r.content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='musclivo-'+r.id+'.txt';a.click();URL.revokeObjectURL(url)}break;}
@@ -197,6 +199,8 @@ document.addEventListener('click',async e=>{
     case 'request':if(await act('request',{target:id,sport:state.me.sport}))toast(t('success'));break;
     case 'respond':case 'respondFollow':await act(action,{id,accept:accept==='true'});break;
     case 'readNotifications':await act(action);break;
+    case 'masterAdminAction':if(!config.production&&state.masterAdmin&&page==='masterAdmin'&&confirm(t('masterActionConfirm')))await act('masterAdmin',{operation:op,id,enabled:el.dataset.enabled==='true',accept:accept==='true'});break;
+    case 'masterAdminPage':if(!config.production&&state.masterAdmin&&page==='masterAdmin'){moveMasterAdminPage(state.me.id,id);render()}break;
     case 'admin':await act('admin',{operation:op,id,accept:accept==='true'});break;
     case 'reportPost':case 'reportProfile':modal(t('report'),form('report',`<label>${t('reason')}<textarea name="reason" maxlength="400" required></textarea></label>`,'send'),{id,targetType:action==='reportPost'?'post':'profile',target:id});break;
     case 'editProfile':{const p=state.me;modal(t('edit'),form('profile',field('name','name',p.name,'text',true)+field('city','city',p.city)+field('sport','sport',p.sport)+field('goal','goal',p.goal)+field('level','level',p.level)+(!config.production&&p.role==='coach'?`<div class="stack"><b>${t('spokenLanguages')}</b>${langs.map(l=>`<label class="check-row"><input type="checkbox" name="spokenLanguages" value="${l}" ${(p.spokenLanguages||[p.lang]).includes(l)?'checked':''}>${t('lang_'+l)}</label>`).join('')}</div>`:'')+`<label>${t('bio')}<textarea name="bio" maxlength="280">${h(p.bio)}</textarea></label>`));break}
@@ -225,6 +229,7 @@ document.addEventListener('submit',async e=>{
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
   if(type==='coachDirectoryFilter'){if(state&&!config.production&&page==='coaches'){updateDirectoryFilter(state.me.id,{query:data.query,verifiedOnly:fd.has('verifiedOnly')});render()}return}
+  if(type==='masterAdminFilter'){if(state?.masterAdmin&&!config.production&&page==='masterAdmin'){updateMasterAdminFilter(state.me.id,data);render()}return}
   if(type==='nutritionEstimate'){showEnergyEstimate(f,data,t);return}
   if(['nutritionFilter','nutritionViewDate','nutritionDay'].includes(type)){
     if(state?.nutrition&&!config.production){

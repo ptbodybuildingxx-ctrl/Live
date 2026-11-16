@@ -2,17 +2,12 @@ import {rehabPage} from './rehab-ui.js';
 import {libraryPage} from './library-ui.js';
 import {campaignPage} from './campaign-ui.js';
 import {eventsPage} from './events-ui.js';
+import {masterAdminPage} from './master-admin-ui.js';
 const filters=new Map();
 export function programFilter(userId,data){if(['events','campaigns','ramadan','startfit','library','rehab'].includes(data.module))filters.set(userId+':'+data.module,{language:data.language,category:data.category,region:data.region,contentType:data.contentType,topic:data.topic,format:data.format,view:data.view,sort:data.sort,query:String(data.query||'').slice(0,100)})}
-const button=(t,h,btn,module,op,id,label,extras='')=>btn(t(label),'programAction',`data-module="${module}" data-op="${op}" data-id="${h(id||'')}" ${extras}`,'secondary');
-const noItems=t=>`<p class="empty">${t('noItems')}</p>`;
 export function programPage({state,id,t,h,btn}){
   const p=state.programs;if(!p)return '';
-  if(id==='masterAdmin'){
-    if(!p.canAdmin)return '';
-    const refs=['events','campaigns','library','rehab'];
-    return `<section class="card stack"><h1>${t(id)}</h1><p>${t('programAdminNotice')}</p><div class="grid">${Object.entries(p.summary).map(([k,v])=>`<div class="stat-box"><b>${v}</b><br>${t(k==='accounts'?'users':k)}</div>`).join('')}</div>${refs.map(m=>`<div class="row rule wrap"><b class="grow">${t(m)}</b>${button(t,h,btn,m,'flag','',p.flags[m]?'programDisable':'programEnable',`data-enabled="${!p.flags[m]}"`)}${btn(t(m),'nav',`data-id="${m}"`,'chip')}</div>`).join('')}${btn(t('identity'),'nav','data-id="identity"','secondary')}${state.me.role==='admin'?btn(t('admin'),'nav','data-id="admin"','secondary'):''}<h2>${t('audit')}</h2>${p.audit.map(a=>`<div class="rule"><b>${h(a.operation)}</b> · ${t(a.module)} · ${h(new Date(a.at).toLocaleString())}</div>`).join('')||noItems(t)}</section>`;
-  }
+  if(id==='masterAdmin')return p.canAdmin?masterAdminPage({state,t,h,btn}):'';
   if(!p.flags[['ramadan','startfit'].includes(id)?'campaigns':id]&&!p.canAdmin)return `<div class="notice">${t('programDisabled')}</div>`;
   if(['campaigns','ramadan','startfit'].includes(id))return campaignPage({state,id,t,h,btn,filter:filters.get(state.me.id+':'+id)||{}});
   if(id==='rehab')return rehabPage({state,t,h,btn,filter:filters.get(state.me.id+':rehab')||{}});

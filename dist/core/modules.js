@@ -13,7 +13,7 @@ export const modules = [
   {id:'ramadan',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['campaignTasks','campaignMyProgress']},
   {id:'startfit',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['campaignTasks','campaignMyProgress']},
   {id:'library',icon:'bookmark',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['books','guides','libraryFavorites','libraryProgress','contentReview']},
-  {id:'masterAdmin',icon:'shield',roles:['admin'],stage:'prototype',items:['audit']},
+  {id:'masterAdmin',icon:'shield',roles:['admin'],stage:'prototype',items:['masterOverview','masterAccounts','masterControls','audit']},
   {id:'about',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['aboutMission','aboutIndependence']}
 ];
 export const canOpen = (id,role,production=false) => !production && modules.some(m=>m.id===id&&m.roles.includes(role));

@@ -32,7 +32,7 @@ export function dashboardView(s,id,identity,flags,coaching,clubOps) {
   }
   if(has('platform.moderate')){metric('dashboardPendingReports',reportList.length);link('reports','identity')}
   if(has('platform.admin')){
-    metric('users',s.profiles.length);link('dashboardPlatformAdmin','admin');
+    metric('users',s.profiles.length);link('dashboardPlatformAdmin','masterAdmin');
   }
   if(has('platform.assign')){metric('identityAssignments',platformAssignments.length);link('identityAssignments','identity')}
   return {contextKey:active.key,role:active.role,club:club?{id:club.id,name:club.name}:null,metrics,actions,metricsEnabled:flags.dashboardMetrics};
