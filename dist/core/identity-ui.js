@@ -1,5 +1,5 @@
 const eligible=['member','coach','clubManager','staff','accountant'];
-export const workspaceRole=state=>state.identity?(state.identity.permissions.includes('club.finance.read')?'gym':state.identity.permissions.includes('coach.programs')?'coach':'athlete'):state.me.role;
+export const workspaceRole=state=>state.identity?(state.identity.permissions.includes('platform.admin')?'admin':state.identity.permissions.includes('club.finance.read')?'gym':state.identity.permissions.includes('coach.programs')?'coach':'athlete'):state.me.role;
 
 export function identityPage({state,t,h,btn}){
   const a=state.identity;if(!a)return '';

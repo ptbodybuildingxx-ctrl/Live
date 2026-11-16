@@ -11,6 +11,7 @@ import {wellnessView,wellnessAction,wellnessExport,removeWellness} from './welln
 import {coachingView,coachingAction,coachingExport,removeCoaching,revokeCoachingPair,disableWorkoutSharing} from './coaching.mjs';
 import {clubOpsView,clubOpsAction,clubOpsExport,removeClubOps,revokeMembership} from './club-ops.mjs';
 import {clubChatView,clubChatAction,clubChatExport,removeClubChat,revokeClubChatGrant,cancelClubChatPairInvites,reportPrivateMessage} from './club-chat.mjs';
+import {programsView,programsAction,programsExport,removePrograms,clearRehab,revokeProgramGrant} from './programs.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const uuid = randomUUID;
@@ -71,6 +72,7 @@ function snapshot(s,id,flags){
   const coaching=coachingView(s,id);
   const clubOps=clubOpsView(s,id);
   const clubChat=clubChatView(s,id);
+  const programs=programsView(s,id);
   const me=profile(s,id);
   const profiles=s.profiles.filter(p=>p.role!=='admin'&&visible(s,p.id,id,'profile')).map(p=>safeProfile(s,p,id));
   const posts=s.posts.filter(p=>visible(s,p.owner,id,'posts')).slice(0,50).map(p=>({...p,comments:p.comments.filter(c=>!blocked(s,c.owner,id)).slice(-100)}));
@@ -80,6 +82,7 @@ function snapshot(s,id,flags){
     ...(coaching?{coaching}:{}),
     ...(clubOps?{clubOps}:{}),
     ...(clubChat?{clubChat}:{}),
+    ...(programs?{programs}:{}),
     ...(flags.smartDashboard&&identity?.active?{dashboard:dashboardView(s,id,identity,flags,coaching,clubOps)}:{}),
     stories:s.stories.filter(x=>x.at>now()-DAY&&visible(s,x.owner,id,'stories')),
     follows:s.follows.filter(x=>x.from===id||x.to===id),saved:s.saved.filter(x=>x.owner===id),
@@ -99,6 +102,7 @@ function action(s,id,b){
   const validTarget=()=>assert(other&&other.id!==id&&visible(s,other.id,id,'profile'),'Account unavailable',404);
   const toggle=(arr,find,create)=>{const i=arr.findIndex(find);if(i>=0)arr.splice(i,1);else arr.push(create)};
   switch(t){
+    case 'programs':{assert(s.identity,'Local programs unavailable',404);programsAction(s,id,b);break;}
     case 'clubChat':{assert(s.identity,'Local club chat unavailable',404);clubChatAction(s,id,b);break;}
     case 'chatReport':{assert(s.identity,'Local chat reporting unavailable',404);reportPrivateMessage(s,id,b);break;}
     case 'clubOps':{
@@ -111,13 +115,13 @@ function action(s,id,b){
     }
     case 'wellness':{
       assert(s.identity,'Local personal records unavailable',404);
-      wellnessAction(s,id,b);if(b.operation==='clear')disableWorkoutSharing(s,id);break;
+      wellnessAction(s,id,b);if(b.operation==='clear'){disableWorkoutSharing(s,id);clearRehab(s,id)}break;
     }
     case 'identity':{
       assert(s.identity,'Local identity module unavailable',404);
       if(b.operation==='invite')assert(visible(s,b.target,id,'profile'),'Account unavailable',404);
       const revoked=b.operation==='revoke'?s.identity.grants.find(g=>g.id===b.id):null;
-      identityAction(s,id,b);if(revoked?.role==='member'&&revoked.clubId)revokeMembership(s,revoked.clubId,revoked.userId,id);if(revoked?.clubId)revokeClubChatGrant(s,revoked.clubId,revoked.userId);break;
+      identityAction(s,id,b);if(revoked?.role==='member'&&revoked.clubId)revokeMembership(s,revoked.clubId,revoked.userId,id);if(revoked?.clubId){revokeClubChatGrant(s,revoked.clubId,revoked.userId);revokeProgramGrant(s,revoked.clubId,revoked.userId)}break;
     }
     case 'profile': {
       for(const key of ['name','city','sport','goal','level','bio'])if(b[key]!==undefined)me[key]=clean(b[key],key==='bio'?280:60);
@@ -197,6 +201,7 @@ function removeAccount(s,id){
   removeCoaching(s,id);
   removeClubOps(s,id);
   removeClubChat(s,id);
+  removePrograms(s,id);
   const owned=new Set(s.posts.filter(p=>p.owner===id).map(p=>p.id));
   s.profiles=s.profiles.filter(p=>p.id!==id);
   s.posts=s.posts.filter(p=>p.owner!==id).map(p=>({...p,likes:p.likes.filter(x=>x!==id),comments:p.comments.filter(c=>c.owner!==id)}));
@@ -236,7 +241,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
     }catch(e){db.exec('ROLLBACK');throw e}
   }
   if(!production)save(read());
-  if(production&&(read().identity||read().wellness||read().coaching||read().clubOps||read().clubChat||read().profiles.some(p=>p.id.startsWith('demo-')||p.email?.endsWith('@demo.local')||p.emailVerified===undefined))){db.close();throw new Error('Release blocked: use a fresh production database, never a demo database')}
+  if(production&&(read().identity||read().wellness||read().coaching||read().clubOps||read().clubChat||read().programs||read().profiles.some(p=>p.id.startsWith('demo-')||p.email?.endsWith('@demo.local')||p.emailVerified===undefined))){db.close();throw new Error('Release blocked: use a fresh production database, never a demo database')}
   const tokenFrom=req=>(req.headers.cookie||'').match(/(?:^|; )ml_session=([a-f0-9]{64})(?:;|$)/)?.[1];
   const revoke=req=>{const token=tokenFrom(req);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(digest(token))};
   const session=(req)=>{const token=tokenFrom(req);return token?db.prepare('SELECT user_id FROM sessions WHERE token=? AND expires>?').get(digest(token),now())?.user_id:null};
@@ -307,7 +312,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
           rate('account:'+id,8,600000);
           const b=await parse(req),fresh=read(),p=profile(fresh,id);assert(p&&!p.suspended);const account=db.prepare('SELECT * FROM accounts WHERE id=?').get(id),pass=String(b.password||'');assert(pass.length<=128&&checkPassword(account,pass),'Invalid credentials',401);
           if(b.operation==='logoutAll'){db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);clearCookie(res);return json(res,{ok:true})}
-          if(b.operation==='export'){return json(res,{profile:p,posts:fresh.posts.filter(x=>x.owner===id),comments:fresh.posts.flatMap(x=>x.comments.filter(c=>c.owner===id).map(c=>({...c,post:x.id}))),stories:fresh.stories.filter(x=>x.owner===id),follows:fresh.follows.filter(x=>x.from===id||x.to===id),messages:fresh.conversations.filter(c=>c.members.includes(id)).flatMap(c=>c.messages.filter(m=>m.owner===id).map(m=>({...m,conversation:c.id}))),requests:fresh.requests.filter(x=>x.from===id||x.to===id),reports:fresh.reports.filter(x=>x.by===id),settings:p.privacy,identity:identityExport(fresh,id),wellness:wellnessExport(fresh,id),coaching:coachingExport(fresh,id),clubOps:clubOpsExport(fresh,id),clubChat:clubChatExport(fresh,id)})}
+          if(b.operation==='export'){return json(res,{profile:p,posts:fresh.posts.filter(x=>x.owner===id),comments:fresh.posts.flatMap(x=>x.comments.filter(c=>c.owner===id).map(c=>({...c,post:x.id}))),stories:fresh.stories.filter(x=>x.owner===id),follows:fresh.follows.filter(x=>x.from===id||x.to===id),messages:fresh.conversations.filter(c=>c.members.includes(id)).flatMap(c=>c.messages.filter(m=>m.owner===id).map(m=>({...m,conversation:c.id}))),requests:fresh.requests.filter(x=>x.from===id||x.to===id),reports:fresh.reports.filter(x=>x.by===id),settings:p.privacy,identity:identityExport(fresh,id),wellness:wellnessExport(fresh,id),coaching:coachingExport(fresh,id),clubOps:clubOpsExport(fresh,id),clubChat:clubChatExport(fresh,id),programs:programsExport(fresh,id)})}
           if(b.operation==='delete'){assert(p.role!=='admin','Administrator cannot self-delete');assert(b.confirm===true,'Confirmation required',400);removeAccount(fresh,id);db.exec('BEGIN');try{save(fresh);db.prepare('DELETE FROM accounts WHERE id=?').run(id);db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);db.prepare('DELETE FROM auth_codes WHERE user_id=?').run(id);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}clearCookie(res);return json(res,{ok:true})}
           throw bad('Unknown account operation');
         }
@@ -320,7 +325,7 @@ export function createApp({dbPath,release={production:false},features={smartDash
         }
         return json(res,{error:'Not found'},404);
       }
-      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/core/wellness-schema.js':'core/wellness-schema.js','/core/wellness-ui.js':'core/wellness-ui.js','/core/coaching-ui.js':'core/coaching-ui.js','/core/club-ops-ui.js':'core/club-ops-ui.js','/core/club-chat-ui.js':'core/club-chat-ui.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
+      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/core/wellness-schema.js':'core/wellness-schema.js','/core/wellness-ui.js':'core/wellness-ui.js','/core/coaching-ui.js':'core/coaching-ui.js','/core/club-ops-ui.js':'core/club-ops-ui.js','/core/club-chat-ui.js':'core/club-chat-ui.js','/core/programs-ui.js':'core/programs-ui.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
       const file=names[url.pathname];if(!file){res.writeHead(404);return res.end('Not found')}
       const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
       res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));

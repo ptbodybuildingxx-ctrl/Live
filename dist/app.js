@@ -8,6 +8,7 @@ import {wellnessForm,wellnessFormRecord,wellnessSettings} from './core/wellness-
 import {coachingProgramForm} from './core/coaching-ui.js';
 import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
+import {programPayload,programFilter} from './core/programs-ui.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 let stateRevision=0,chatMode='personal',clubChatId=null;
@@ -98,6 +99,10 @@ async function sign(b){if(busy)return;busy=true;try{const result=await api('auth
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
+    case 'programAction':if(!config.production&&state.programs){
+      if(op==='download'){const r=state.programs.items.find(x=>x.module==='library'&&x.id===id);if(r){const url=URL.createObjectURL(new Blob([r.title+'\n'+r.author+'\n'+r.rightsNote+'\n\n'+r.content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='musclivo-'+r.id+'.txt';a.click();URL.revokeObjectURL(url)}break;}
+      if(!['delete','archive'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true'});
+    }break;
     case 'nav':page=id;if(id==='chat')chatMode=state.clubChat?'club':'personal';render();window.scrollTo(0,0);break;
     case 'chatMode':chatMode=id==='club'?'club':'personal';render();break;
     case 'clubChatNav':page='chat';chatMode='club';clubChatId=null;render();window.scrollTo(0,0);break;
@@ -173,6 +178,8 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='programFilter'){if(state&&!config.production){programFilter(state.me.id,data);render()}return}
+  if(type==='programs'){if(!config.production&&state.programs&&(!(data.operation==='share'&&data.linkId!=='none')||confirm(t('programShareConfirm'))))await act('programs',programPayload(data));return}
   if(['clubChatCreate','clubChatInvite','clubChatMessage'].includes(type)){if(!config.production&&state.clubChat){const operation={clubChatCreate:'create',clubChatInvite:'invite',clubChatMessage:'send'}[type];await act('clubChat',{...data,operation,clubId:state.clubChat.clubId})}return;}
   if(['clubChatReport','privateChatReport'].includes(type)){if(!config.production&&state.identity&&modalPayload){const ok=await act(type==='clubChatReport'?'clubChat':'chatReport',{...modalPayload,reason:data.reason});if(ok){closeModal();toast(t('success'))}}return;}
   if(type==='clubOps'){if(!config.production&&state.clubOps&&modalPayload){const ok=await act('clubOps',{...clubFormPayload(data),...modalPayload});if(ok){closeModal();toast(t('success'))}}return;}

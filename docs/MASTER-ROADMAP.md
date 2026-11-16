@@ -35,13 +35,17 @@ Club owners/managers manage branches, accepted-member subscriptions and plans; m
 
 Personal direct/group chat remains available. The chat workspace now separates club rooms by active club and role, with built-in general, staff, coach and finance channels. Managers may create custom groups and invite eligible, consenting members without automatically gaining access to their private content. Reporting discloses only a selected message and reason, blocking hides messages, and role revocation removes custom memberships. See [Chat](CHAT.md).
 
-## Remaining sprints
+## Sprint 08 — local live events, campaigns, library and rehab
 
-| Sprint | Goal | Acceptance gate |
-|---|---|---|
-| 08 | Live, Ramadan, StartFit, library and rehab | Admin-managed campaigns, group threshold events, rights-cleared library and consent-based rehab |
-| 09 | Administration | Module rollout flags, moderation and role-specific audit, no unrestricted private-data access |
-| 10 | Local acceptance and release preparation | Automated tests, responsive and multilingual checks, privacy review, backups and a documented release gate |
+Local threshold events, waitlists, club-scoped management, Ramadan and StartFit check-ins, rights-confirmed text library and consent-based personal test rehab records are implemented.
+
+## Sprint 09 — local master administration
+
+The central workspace links existing moderation and identity administration, reports aggregate counts and controls rollout of the four new local modules. No expansion of access to private data or other clubs.
+
+## Sprint 10 — local acceptance and release preparation
+
+19 automated tests pass, including consent, event enrollment, library publication, feature flags, backup integrity and the production gate. Browser/device acceptance, policy review, secure hosting and production deployment remain open. Chromium could not launch in the test sandbox. See [Programs and administration](PROGRAMS-ADMIN.md) and [release checklist](../RELEASE-CHECKLIST.md).
 
 ## MVP scope and rules
 

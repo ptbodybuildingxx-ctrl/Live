@@ -4,6 +4,7 @@ import {wellnessPage} from './wellness-ui.js';
 import {wellnessModules} from './wellness-schema.js';
 import {coachingPanel,assignedPrograms} from './coaching-ui.js';
 import {clubPage,financePage} from './club-ops-ui.js';
+import {programPage} from './programs-ui.js';
 
 // Deliberately temporary examples only. No health/finance data or credentials are stored here.
 const checked=new Map();
@@ -21,9 +22,10 @@ export function toggleCoachLanguage(state,language,currentLanguage){
 }
 export function resetWorkspace(){checked.clear();selections.clear()}
 export function workspacePage({state,id,production,t,h,ic,btn,person,lang}){
-  const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production);
+  const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production).filter(m=>state.programs?.flags[m.id]!==false||state.programs?.canAdmin);
   if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><div class="grid workspace-grid">${permitted.map(m=>`<button class="card quick workspace-card" data-action="nav" data-id="${m.id}">${ic(m.icon)}<b>${t(m.id)}</b><span class="badge ${m.stage==='prototype'?'green':'gold'}">${t(m.stage)}</span><small>${t(m.items[0])}</small></button>`).join('')}</div></div>`;
   if(!canOpen(id,effectiveRole,production))return '';
+  if(state.programs&&['events','campaigns','library','rehab','masterAdmin'].includes(id))return `<div class="stack"><div class="row wrap">${btn(t('workspace'),'nav','data-id="workspace"','chip')}</div>${programPage({state,id,t,h,btn})}</div>`;
   const module=permitted.find(m=>m.id===id);
   if(state.identity&&['clubs','finance'].includes(id))return `<div class="stack"><div class="row wrap">${btn(t('workspace'),'nav','data-id="workspace"','chip')}<span class="badge green">${t('wellnessLocal')}</span></div>${(id==='clubs'?clubPage:financePage)({state,t,h,btn,lang})}</div>`;
   const done=checked.get(sessionKey(state,id))||new Set();

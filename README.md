@@ -14,6 +14,8 @@
 
 **Sprint 07 — local community and chat:** Existing personal chats remain intact. Club contexts now have role-gated general, staff, coach and finance rooms plus custom groups with accepted invitations. Membership, blocking and report evidence are enforced on the server. See [Club chat](docs/CHAT.md).
 
+**Sprints 08–10 — local events, campaigns, library, rehab and administration:** threshold events with waitlists, Ramadan/StartFit enrollment and check-ins, rights-confirmed text resources, consent-scoped test injury records, local rollout controls and a verified SQLite backup test. All 19 automated tests pass locally. Public rollout and real-device acceptance remain gated. See [Programs and administration](docs/PROGRAMS-ADMIN.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا
