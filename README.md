@@ -10,6 +10,8 @@
 
 **Sprint 05 — local coach management:** Verified coaches and members can mutually accept coaching relationships, assign and update personal programs, and track completion. Trainees may separately opt in to sharing workout history and revoke it any time. Other private records remain private. See [Coaching](docs/COACHING.md).
 
+**Sprint 06 — local clubs and finance:** Club owners and managers can manage branches, subscription plans and memberships; accepted members see their own subscriptions and invoices. Owners and accountants can record manual income, expenses and invoices. Managers have read-only finance. Reports and audit are isolated to the selected club. No real payment processing. See [Clubs and finance](docs/CLUBS-FINANCE.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

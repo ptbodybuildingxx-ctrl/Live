@@ -4,7 +4,7 @@ export function dashboardFlags(production, options={}) {
   return {smartDashboard, dashboardMetrics:smartDashboard&&options.dashboardMetrics!==false};
 }
 
-export function dashboardView(s,id,identity,flags,coaching) {
+export function dashboardView(s,id,identity,flags,coaching,clubOps) {
   if(!flags.smartDashboard||!identity?.active)return undefined;
   const {active,permissions,club,roster,invitations,reportList,platformAssignments}=identity;
   const has=p=>permissions.includes(p), metrics=[], actions=[];
@@ -21,14 +21,14 @@ export function dashboardView(s,id,identity,flags,coaching) {
   if(has('coach.programs')){const planned=!!active.clubId||s.profiles.find(p=>p.id===id)?.verified!==true;link('coachPrograms','coaches',planned);link('traineeProgress','coaches',planned)}
   if(coaching)metric('coachingIncoming',coaching.links.filter(l=>l.status==='pending'&&l.incoming).length);
   if(active.clubId&&has('club.read')){
-    link('dashboardClubContext','identity');
+    link('dashboardClubContext','identity');link('clubs','clubs');
     if(has('club.roster'))metric('dashboardClubAccounts',new Set(roster.map(g=>g.userId)).size);
     if(has('club.assign')){
       metric('dashboardPendingInvites',invitations.filter(v=>v.clubId===active.clubId&&v.status==='pending').length);
       link('identityInvite','identity');
     }
-    if(has('club.manage'))link('staff','clubs',true);
-    if(has('club.finance.read'))link('finance','finance',true);
+    if(has('club.manage')){link('staff','clubs');if(clubOps)metric('clubActiveMemberships',clubOps.memberships.filter(m=>m.status==='active').length)}
+    if(has('club.finance.read')){link('finance','finance');if(clubOps?.finance)metric('clubOpenInvoices',clubOps.finance.invoices.filter(i=>i.status==='issued').length)}
   }
   if(has('platform.moderate')){metric('dashboardPendingReports',reportList.length);link('reports','identity')}
   if(has('platform.admin')){

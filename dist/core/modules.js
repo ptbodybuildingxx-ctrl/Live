@@ -5,8 +5,8 @@ export const modules = [
   {id:'health',icon:'check',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['habits','sleep','measurements']},
   {id:'rehab',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'planned',items:['injuryLog','rehabPlans','consent']},
   {id:'coaches',icon:'profile',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['coachDirectory','coachPrograms','traineeProgress']},
-  {id:'clubs',icon:'social',roles:['athlete','coach','gym','admin'],stage:'planned',items:['clubDirectory','branches','memberships','staff']},
-  {id:'finance',icon:'calendar',roles:['gym','admin'],stage:'planned',items:['income','expenses','invoices','financeReports']},
+  {id:'clubs',icon:'social',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['clubDirectory','branches','memberships','staff']},
+  {id:'finance',icon:'calendar',roles:['gym','admin'],stage:'prototype',items:['income','expenses','invoices','financeReports']},
   {id:'campaigns',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'planned',items:['ramadan','startfit','campaignAdmin']},
   {id:'library',icon:'bookmark',roles:['athlete','coach','gym','admin'],stage:'planned',items:['books','guides','contentReview']},
   {id:'about',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['aboutMission','aboutIndependence']}

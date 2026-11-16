@@ -3,6 +3,7 @@ import {workspaceRole} from './identity-ui.js';
 import {wellnessPage} from './wellness-ui.js';
 import {wellnessModules} from './wellness-schema.js';
 import {coachingPanel,assignedPrograms} from './coaching-ui.js';
+import {clubPage,financePage} from './club-ops-ui.js';
 
 // Deliberately temporary examples only. No health/finance data or credentials are stored here.
 const checked=new Map();
@@ -24,6 +25,7 @@ export function workspacePage({state,id,production,t,h,ic,btn,person,lang}){
   if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><div class="grid workspace-grid">${permitted.map(m=>`<button class="card quick workspace-card" data-action="nav" data-id="${m.id}">${ic(m.icon)}<b>${t(m.id)}</b><span class="badge ${m.stage==='prototype'?'green':'gold'}">${t(m.stage)}</span><small>${t(m.items[0])}</small></button>`).join('')}</div></div>`;
   if(!canOpen(id,effectiveRole,production))return '';
   const module=permitted.find(m=>m.id===id);
+  if(state.identity&&['clubs','finance'].includes(id))return `<div class="stack"><div class="row wrap">${btn(t('workspace'),'nav','data-id="workspace"','chip')}<span class="badge green">${t('wellnessLocal')}</span></div>${(id==='clubs'?clubPage:financePage)({state,t,h,btn,lang})}</div>`;
   const done=checked.get(sessionKey(state,id))||new Set();
   const demo=samples[id]?`<section class="card stack"><h2>${t('sampleChecklist')}</h2><p class="muted">${t('sampleNotice')}</p><div class="progress"><span style="width:${Math.round(done.size/samples[id].length*100)}%"></span></div>${samples[id].map(item=>`<button class="secondary sample-task ${done.has(item)?'sample-done':''}" aria-pressed="${done.has(item)}" data-action="sampleToggle" data-id="${item}">${ic(done.has(item)?'check':'plus')}${t(item)}</button>`).join('')}<small>${done.size} / ${samples[id].length} ${t('done')}</small></section>`:'';
   const selected=selections.get(sessionKey(state,'coaches'))||[lang];

@@ -29,7 +29,7 @@ test('all nine roles: authenticated summaries, invite/revoke and tenant isolatio
   const clubCoach=await act(coach.cookie,'switch',{context:'club-iron:coach'});assert.equal(clubCoach.data.dashboard.club.id,'club-iron');assert(!keys(clubCoach.data.dashboard).includes('xp'));
   const owner=gym.data.dashboard;assert.equal(owner.role,'clubOwner');assert.equal(owner.metrics.find(m=>m.key==='dashboardClubAccounts').value,4);assert(targets(owner).includes('finance'));
   const north=await act(sara.cookie,'switch',{context:'club-north:clubOwner'});assert.equal(north.data.dashboard.club.id,'club-north');assert.equal(north.data.dashboard.metrics.find(m=>m.key==='dashboardClubAccounts').value,1);
-  const acct=await act(sara.cookie,'switch',{context:'club-iron:accountant'});assert.equal(acct.data.dashboard.role,'accountant');assert.deepEqual(acct.data.dashboard.metrics,[]);assert(targets(acct.data.dashboard).includes('finance'));
+  const acct=await act(sara.cookie,'switch',{context:'club-iron:accountant'});assert.equal(acct.data.dashboard.role,'accountant');assert.deepEqual(acct.data.dashboard.metrics,[{key:'clubOpenInvoices',value:0}]);assert(targets(acct.data.dashboard).includes('finance'));
   assert.equal((await act(member.cookie,'switch',{context:'club-north:clubOwner'})).status,403);
   const grant=async(role,target,cookie)=>{
     const g=await act(gym.cookie,'invite',{clubId:'club-iron',role,target});assert.equal(g.status,200);

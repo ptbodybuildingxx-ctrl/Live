@@ -3,9 +3,9 @@ import {randomUUID} from 'node:crypto';
 // Local server authorization. Existing public profile roles are preserved for compatibility.
 export const permissions=Object.freeze({
   member:['personal.read'],coach:['personal.read','coach.programs'],
-  clubOwner:['club.read','club.roster','club.assign','club.finance.read','club.manage'],
+  clubOwner:['club.read','club.roster','club.assign','club.finance.read','club.finance.write','club.manage'],
   clubManager:['club.read','club.roster','club.finance.read','club.manage'],
-  staff:['club.read'],accountant:['club.read','club.finance.read'],
+  staff:['club.read'],accountant:['club.read','club.finance.read','club.finance.write'],
   moderator:['platform.moderate'],admin:['platform.moderate','platform.admin'],
   superAdmin:['platform.moderate','platform.admin','platform.assign']
 });

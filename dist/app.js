@@ -6,6 +6,7 @@ import {dashboardPage,dashboardSettings,dashboardCompact,setDashboardCompact} fr
 import {wellnessKinds} from './core/wellness-schema.js';
 import {wellnessForm,wellnessFormRecord,wellnessSettings} from './core/wellness-ui.js';
 import {coachingProgramForm} from './core/coaching-ui.js';
+import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 let stateRevision=0;
@@ -96,6 +97,8 @@ document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
     case 'nav':page=id;render();window.scrollTo(0,0);break;
+    case 'clubForm':{const c=state.clubOps;if(config.production||!c)break;const row=c.branches.find(r=>r.id===id)||c.plans.find(r=>r.id===id)||c.finance?.invoices.find(r=>r.id===id)||c.finance?.ledger.find(r=>r.id===id);const fields=clubFormFields(op,row,c,t,h);if(fields)modal(t('clubOp_'+op),form('clubOps',fields),{operation:op,...(id?{id}:{}),clubId:c.clubId});break;}
+    case 'clubAction':if(!config.production&&state.clubOps&&confirm(t('clubActionConfirm')))await act('clubOps',{operation:op,id,clubId:state.clubOps.clubId});break;
     case 'coachingResponse':if(!config.production&&state.coaching&&(! (accept==='true')||confirm(t('coachingConsent'))))await act('coaching',{operation:'respond',linkId:id,accept:accept==='true'});break;
     case 'coachingEnd':if(!config.production&&state.coaching&&confirm(t('coachingEndConfirm')))await act('coaching',{operation:'end',linkId:id});break;
     case 'coachingShare':if(!config.production&&state.coaching?.role==='member'&&(el.dataset.enabled!=='true'||confirm(t('coachingShareConfirm'))))await act('coaching',{operation:'share',linkId:id,enabled:el.dataset.enabled==='true'});break;
@@ -160,6 +163,7 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='clubOps'){if(!config.production&&state.clubOps&&modalPayload){const ok=await act('clubOps',{...clubFormPayload(data),...modalPayload});if(ok){closeModal();toast(t('success'))}}return;}
   if(type==='coachingInvite'){if(!config.production&&state.coaching&&confirm(t('coachingConsent')))await act('coaching',{operation:'invite',target:data.target});return;}
   if(type==='coachingProgram'){if(!config.production&&state.coaching?.role==='coach'&&modalPayload){const ok=await act('coaching',{...modalPayload,title:data.title,exercises:String(data.exercises).split(/\r?\n/).map(x=>x.trim()).filter(Boolean),notes:data.notes});if(ok){closeModal();toast(t('success'))}}return;}
   if(type==='wellness'){if(!config.production&&state.wellness?.enabled&&modalPayload&&Object.hasOwn(wellnessKinds,modalPayload.kind)){const ok=await act('wellness',{...modalPayload,record:wellnessFormRecord(modalPayload.kind,fd)});if(ok){closeModal();toast(t('success'))}}return;}

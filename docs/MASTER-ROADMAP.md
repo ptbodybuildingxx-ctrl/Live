@@ -27,11 +27,14 @@ Owner-authenticated CRUD is available for workout programs and exercise logs, me
 
 Verified coaches and trainees can establish a mutually approved personal-context coaching relationship. Coaches can create, update and archive assigned programs, with trainees reporting completion. An independent opt-in allows read-only workout history and can be revoked without ending coaching. Ending, blocking or account deletion removes access. Club and platform contexts cannot read coaching data. See [Coaching](COACHING.md).
 
+## Sprint 06 — local clubs and finance
+
+Club owners/managers manage branches, accepted-member subscriptions and plans; members see their own active club records and invoices. Club owners/accountants manage a manual ledger and issued, paid or void invoices. Managers have finance read-only access. Amounts use integer minor units; SEK/EUR/USD reports are separate. Club-context checks, append-only audit and invoice-linked ledger corrections prevent cross-tenant access or double recording. No actual transactions or tax-qualified invoicing. See [Clubs and finance](CLUBS-FINANCE.md).
+
 ## Remaining sprints
 
 | Sprint | Goal | Acceptance gate |
 |---|---|---|
-| 06 | Clubs and finance | Club-scoped members, staff, branches, subscriptions, manual ledger, invoices and audit; no payments |
 | 07 | Community and chat | Club/staff/finance groups with membership enforcement, reporting and blocking |
 | 08 | Live, Ramadan, StartFit, library and rehab | Admin-managed campaigns, group threshold events, rights-cleared library and consent-based rehab |
 | 09 | Administration | Module rollout flags, moderation and role-specific audit, no unrestricted private-data access |

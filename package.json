@@ -4,5 +4,5 @@
   "private": true,
   "type": "module",
   "engines": {"node": ">=22.13"},
-  "scripts": {"dev":"node server.mjs","start":"node server.mjs","start:release":"node --env-file=.env.production server.mjs --release","test":"node --check dist/app.js && node --check dist/i18n.js && node --check dist/policy.js && node --check server.mjs && node --check dashboard.mjs && node --check dist/core/dashboard.js && node --check wellness.mjs && node --check dist/core/wellness-ui.js && node --check dist/core/wellness-schema.js && node --check coaching.mjs && node --check dist/core/coaching-ui.js && node --check release.mjs && node --test tests/*.test.mjs","backup":"node backup.mjs"}
+  "scripts": {"dev":"node server.mjs","start":"node server.mjs","start:release":"node --env-file=.env.production server.mjs --release","test":"node --check dist/app.js && node --check dist/i18n.js && node --check dist/policy.js && node --check server.mjs && node --check dashboard.mjs && node --check dist/core/dashboard.js && node --check wellness.mjs && node --check dist/core/wellness-ui.js && node --check dist/core/wellness-schema.js && node --check coaching.mjs && node --check dist/core/coaching-ui.js && node --check club-ops.mjs && node --check dist/core/club-ops-ui.js && node --check release.mjs && node --test tests/*.test.mjs","backup":"node backup.mjs"}
 }

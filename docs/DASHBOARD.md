@@ -6,10 +6,10 @@ The local Home screen now includes a dashboard alongside the existing community 
 |---|---|
 | Member | Personal XP, joined challenges, upcoming own/joined sessions; training, nutrition and health previews in personal context; club identity in club context |
 | Coach | Personal summaries in personal context; verified-coach program and consent-based trainee progress shortcuts (Sprint 05); assigned club identity and coaching preview in club context |
-| Club owner | Unique active club account count, pending invitations in that club, role invitations, staff and finance previews |
-| Club manager | Unique active club account count, staff and finance previews |
+| Club owner | Unique active club account count, pending invitations in that club, role invitations, active memberships, open invoices and club/finance tools |
+| Club manager | Unique active club account count, active memberships, open invoices, club management and read-only finance |
 | Staff | Assigned club identity only |
-| Accountant | Assigned club identity and finance preview, no roster count |
+| Accountant | Assigned club identity, open invoice count and finance recording, no roster count |
 | Moderator | Pending report count and moderation shortcut |
 | Admin | Pending report count, platform account count and existing admin screen |
 | Super admin | Admin capabilities plus moderator assignment count and shortcut |
