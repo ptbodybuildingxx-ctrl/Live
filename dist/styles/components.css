@@ -1,0 +1,138 @@
+/* Shared interface system. Keep domain-specific rules in their own stylesheets. */
+body {
+  background: radial-gradient(ellipse at 85% 0%, color-mix(in srgb, var(--green) 4%, transparent), transparent 40%), var(--bg);
+}
+
+.card {
+  border-radius: var(--radius-panel);
+  padding: clamp(15px, 2vw, 24px);
+  box-shadow: var(--shadow-panel);
+}
+
+.stack { gap: 16px; }
+.grid { gap: 14px; }
+.stat-box { background: var(--surface-raised); border-radius: var(--radius-control); padding: 15px 10px; }
+.stat-box strong, .stat-box b, .stat { font-variant-numeric: tabular-nums; }
+.hero { border-radius: 28px; }
+.workspace-hero { min-height: 196px; }
+
+.primary, .secondary, .danger, .icon-button, .chip {
+  border-radius: var(--radius-control);
+  min-height: 44px;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.primary { border: 1px solid transparent; box-shadow: 0 4px 16px color-mix(in srgb, var(--green) 14%, transparent); }
+.secondary, .icon-button { background: var(--surface-raised); border-color: var(--line-strong); }
+.danger { color: #240706; border: 1px solid transparent; }
+.chip { min-height: 34px; border-radius: 999px; }
+.primary:not(:disabled):hover { filter: brightness(1.07); }
+.secondary:not(:disabled):hover, .icon-button:not(:disabled):hover, .chip:not(:disabled):hover { border-color: var(--green); color: var(--green); }
+.chip.active:not(:disabled):hover, .chip[aria-pressed=true]:not(:disabled):hover { color: var(--on); }
+.chip[aria-pressed=true] { background: var(--green); border-color: var(--green); color: var(--on); }
+.primary:not(:disabled):active, .secondary:not(:disabled):active, .danger:not(:disabled):active, .icon-button:not(:disabled):active { transform: translateY(1px); }
+.quick:not(:disabled):hover { background: var(--surface-raised); box-shadow: var(--shadow-hover); }
+
+input:not([type=checkbox]):not([type=radio]), select, textarea {
+  border-radius: var(--radius-control);
+  min-height: 44px;
+  background: var(--surface-inset);
+  border-color: var(--line-strong);
+}
+input:focus, textarea:focus, select:focus { box-shadow: var(--focus-ring); border-color: var(--green); }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+input[type=checkbox], input[type=radio], input[type=range], progress { accent-color: var(--green); }
+progress { display: block; height: 8px; width: 100%; border: 0; border-radius: 999px; overflow: hidden; }
+
+/* Native disclosures work with mouse, touch, keyboard and assistive technology. */
+.main-content details, .dialog details {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-inset);
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+.main-content details[open], .dialog details[open] { border-color: var(--line-strong); }
+.main-content details > summary, .dialog details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  min-height: 48px;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 720;
+  color: var(--text);
+  border-radius: 15px;
+  user-select: none;
+}
+.main-content details > summary::-webkit-details-marker, .dialog details > summary::-webkit-details-marker { display: none; }
+.main-content details > summary::after, .dialog details > summary::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  margin-inline-end: 4px;
+  border-right: 2px solid var(--green);
+  border-bottom: 2px solid var(--green);
+  transform: rotate(45deg);
+}
+.main-content details[open] > summary, .dialog details[open] > summary { border-bottom: 1px solid var(--line); border-radius: 15px 15px 0 0; background: var(--surface-raised); }
+.main-content details[open] > summary::after, .dialog details[open] > summary::after { transform: rotate(225deg); }
+.main-content details > summary:hover, .dialog details > summary:hover { background: var(--surface-raised); }
+.main-content details[open] > :not(summary), .dialog details[open] > :not(summary) { margin: 12px 14px; }
+.main-content details[open] > .training-drawing, .main-content details[open] > .grid { min-width: 0; }
+
+/* Workspace cards are real disclosures; an explicit action opens the module. */
+.workspace-grid { align-items: start; grid-template-columns: repeat(auto-fit,minmax(min(100%, 245px),1fr)); }
+.main-content .workspace-card {
+  background: var(--panel);
+  min-height: 0;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+.main-content .workspace-card > summary { min-height: 104px; border-radius: var(--radius-panel); padding: 17px; }
+.main-content .workspace-card[open] > summary { border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+.workspace-card-heading { display: flex; flex: 1; gap: 13px; align-items: center; min-width: 0; }
+.workspace-card-icon { display: grid; place-items: center; flex-shrink: 0; width: 46px; height: 46px; border-radius: 15px; background: color-mix(in srgb,var(--green) 11%,var(--panel)); color: var(--green); }
+.workspace-card-icon .icon { width: 24px; height: 24px; }
+.workspace-card-heading .badge { align-self: flex-start; max-width: 100%; white-space: normal; }
+.workspace-card-label { display: grid; gap: 5px; min-width: 0; }
+.workspace-card-label b { overflow-wrap: anywhere; }
+.workspace-card-body ul { margin: 0; padding-inline-start: 20px; color: var(--muted); font-size: 13px; }
+.workspace-card-body li + li { margin-top: 5px; }
+.workspace-card-body .primary { width: 100%; }
+
+.sidebar { background: var(--panel); gap: 22px; }
+.nav-link { border-radius: 14px; min-height: 46px; }
+.topbar .actions { gap: 8px; }
+.topbar select.lang { min-height: 44px; }
+.main-content { padding-bottom: 12px; }
+.dialog { border-radius: var(--radius-panel); box-shadow: var(--shadow-hover); }
+
+@media (max-width: 740px) {
+  .main { padding-inline: 12px; }
+  .topbar { gap: 8px; height: auto; min-height: 64px; flex-wrap: wrap; padding-block: 9px; }
+  .topbar .brand { flex: 1; min-width: 105px; }
+  .topbar .actions { gap: 4px; }
+  .topbar .icon-button { min-width: 36px; min-height: 40px; padding: 7px; }
+  .topbar .lang { min-width: 52px; width: auto; padding: 7px; }
+  .bottom-nav { box-shadow: 0 -8px 24px #0002; }
+  .bottom-nav .nav-link { min-width: 0; flex: 1; min-height: 48px; }
+  .bottom-nav .nav-link span { max-width: 100%; overflow-wrap: anywhere; }
+  .grid { gap: 10px; }
+  .workspace-grid { grid-template-columns: 1fr; }
+  .workspace-hero { min-height: 165px; }
+  .card .row.wrap > * { min-width: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .primary, .secondary, .icon-button, .chip, .quick, .nav-link { transition: background .18s, color .18s, border-color .18s, box-shadow .18s, transform .18s; }
+  details > summary::after { transition: transform .18s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .primary, .secondary, .icon-button, .chip, .quick, .nav-link, details > summary::after { transition: none; }
+}

@@ -1,5 +1,10 @@
 # MUSCLIVO LIVE — Local Release Candidate 1
 
+**Design system:** the interface uses shared design tokens, rounded controls,
+native expandable cards and a responsive layout in Arabic, English and Swedish.
+See [Project structure and design system](docs/PROJECT-STRUCTURE.md) for the
+file map and guidance on extending modules without duplicating style rules.
+
 **Master Roadmap / Sprint 01:** the local workspace now includes the new module navigation, sample training/nutrition/habits checklists, coach-language filtering and independent Arabic, English and Swedish translation files. Planned modules are clearly marked; this is not a completed clinical or club-finance system. See [Master Roadmap](docs/MASTER-ROADMAP.md).
 
 **Sprint 02 — local identity and access:** select Identity & access from the dashboard or workspace. One authenticated account can switch between personal, club and permitted platform roles. Club owners can invite staff, managers, coaches, accountants or members; recipients must accept. The server checks active role and club scope for each operation. The two demo clubs illustrate isolation. The legacy social-profile role remains intact. This identity module stays local-only until production security review. See [Identity model](docs/IDENTITY.md).

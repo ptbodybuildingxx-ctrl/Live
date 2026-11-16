@@ -1,4 +1,6 @@
 export default {
+  "openModule": "Öppna avsnitt",
+  "workspaceExpandHint": "Välj ett kort för att visa eller dölja innehållet.",
   "nut_smartTargets": "Smart målkalkylator",
   "nut_smartHint": "Endast för friska aktiva vuxna. Redigerbar beräkning, inte en kostordination. Rådgör med specialist vid hälsotillstånd eller särskilda behov. Mätvärden skickas inte till servern.",
   "nut_adjustment": "Energiändring (%)",

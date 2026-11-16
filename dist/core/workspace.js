@@ -7,6 +7,7 @@ import {clubPage,financePage} from './club-ops-ui.js';
 import {programPage} from './programs-ui.js';
 import {trainingPage} from './training-ui.js';
 import {nutritionPage} from './nutrition-ui.js';
+import {workspaceCard} from './disclosures.js';
 
 // Deliberately temporary examples only. No health/finance data or credentials are stored here.
 const checked=new Map();
@@ -25,7 +26,7 @@ export function toggleCoachLanguage(state,language,currentLanguage){
 export function resetWorkspace(){checked.clear();selections.clear()}
 export function workspacePage({state,id,production,t,h,ic,btn,person,lang}){
   const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production).filter(m=>state.programs?.flags[m.id]!==false||state.programs?.canAdmin);
-  if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><div class="grid workspace-grid">${permitted.map(m=>`<button class="card quick workspace-card" data-action="nav" data-id="${m.id}">${ic(m.icon)}<b>${t(m.id)}</b><span class="badge ${m.stage==='prototype'?'green':'gold'}">${t(m.stage)}</span><small>${t(m.items[0])}</small></button>`).join('')}</div></div>`;
+  if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><p class="muted">${h(t('workspaceExpandHint'))}</p><div class="grid workspace-grid">${permitted.map(module=>workspaceCard({module,t,h,ic,btn})).join('')}</div></div>`;
   if(!canOpen(id,effectiveRole,production))return '';
   if(state.training&&id==='trainingPro')return `<div class="stack">${btn(t('workspace'),'nav','data-id="workspace"','chip')}${trainingPage({state,t,h,btn,lang})}</div>`;
   if(state.nutrition&&id==='nutrition')return `<div class="stack">${btn(t('workspace'),'nav','data-id="workspace"','chip')}${nutritionPage({state,t,h,btn,lang})}${!state.nutrition.canAdmin?wellnessPage({state,id,t,h,btn}):''}</div>`;

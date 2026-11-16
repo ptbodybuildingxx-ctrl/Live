@@ -1,4 +1,6 @@
 export default {
+  "openModule": "Open section",
+  "workspaceExpandHint": "Select a card to expand or collapse its contents.",
   "nut_smartTargets": "Smart target calculator",
   "nut_smartHint": "For healthy active adults only. Editable calculation, not a diet prescription. Seek professional guidance for health conditions or special needs. Measurements are not sent to the server.",
   "nut_adjustment": "Energy adjustment (%)",

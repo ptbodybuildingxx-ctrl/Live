@@ -12,6 +12,7 @@ import {programPayload,programFilter} from './core/programs-ui.js';
 import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer,updateTrainingPicker,updateTemplateFilter,rememberTrainingDraft,clearTrainingDraft} from './core/training-ui.js';
 import {nutritionUI,nutritionPayload,resetNutritionUI,updateNutritionPicker,showEnergyEstimate,fillSmartTargets} from './core/nutrition-ui.js';
 import {bindDrawingPreviews} from './core/xdraw-ui.js';
+import {captureDisclosures,restoreDisclosures} from './core/disclosures.js';
 bindDrawingPreviews(document);
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
@@ -43,11 +44,13 @@ function auth(){
   const policyLinks=()=>`<div class="row wrap"><a href="/privacy?lang=${lang}" target="_blank" rel="noopener">${t('privacyPolicy')}</a><a href="/terms?lang=${lang}" target="_blank" rel="noopener">${t('terms')}</a></div>`;
   $('#app').innerHTML=`<main class="auth"><div class="auth-brand">${brand()}${art()}<h1>NEVER TRAIN ALONE.</h1><p>TRAIN. CONNECT. EVOLVE.</p></div><div class="stack"><div class="row space">${badge(t('local'),'gold')}${langSelect()}</div><div class="card auth-form"><h1>${t(label)}</h1><p class="muted">${t('localNote')}</p><form class="stack" data-form="auth">${registration?`<label>${t('name')}<input name="name" required maxlength="60" autocomplete="name"></label><label>${t('role')}<select name="role">${['athlete','coach','gym'].map(r=>`<option value="${r}">${t(r)}</option>`).join('')}</select></label>`:''}<label>${t('email')}<input name="email" type="email" value="${h(authEmail)}" required autocomplete="email"></label>${verify||reset?`<label>${t('verificationCode')}<input name="code" required maxlength="48" autocomplete="one-time-code"></label>`:''}${authenticated||registration||reset?`<label>${t('password')}<input name="password" type="password" required minlength="${config.production?12:8}" maxlength="128" autocomplete="${authenticated?'current-password':'new-password'}"></label>`:''}${registration&&config.production?`<label class="check-row"><input type="checkbox" name="acceptPolicies" required>${t('agree')}</label><label class="check-row"><input type="checkbox" name="adult" required>${t('adult')}</label>${policyLinks()}`:''}<button class="primary" type="submit">${t(label)}</button></form>${authenticated?btn(t('register'),'authMode','data-id="register"','secondary'):btn(t('login'),'authMode','data-id="login"','secondary')}${config.production&&authenticated?`<div class="row wrap">${btn(t('forgot'),'authMode','data-id="forgot"','chip')}${btn(t('verifyEmail'),'authMode','data-id="verify"','chip')}</div>`:''}${config.production&&verify?btn(t('resend'),'resend','','chip'):''}</div>${config.demo?`<div class="card stack"><h3>${t('demo')}</h3><small>${t('demoInfo')}</small><div class="grid">${['athlete','coach','gym','admin'].map(r=>btn(t(r),'demo',`data-id="${r}"`,'secondary')).join('')}</div></div>`:''}${policyLinks()}</div></main>`;
 }
-function nav(key){return `<button class="nav-link ${page===key?'active':''}" data-action="nav" data-id="${key}" aria-current="${page===key?'page':'false'}">${ic(key==='admin'?'shield':key==='challenges'?'trophy':key)}<span>${t(key)}</span></button>`}
+function nav(key){return `<button class="nav-link ${page===key?'active':''}" data-action="nav" data-id="${key}" aria-label="${h(t(key))}" aria-current="${page===key?'page':'false'}">${ic(key==='admin'?'shield':key==='challenges'?'trophy':key)}<span>${t(key)}</span></button>`}
 function render(){
   applyTheme();if(!state){auth();return}
   if(page==='admin'&&state.me.role!=='admin')page='home';
   if((page==='workspace'&&config.production)||(page==='identity'&&(!state.identity||config.production))||(modules.some(m=>m.id===page)&&!canOpen(page,workspaceRole(state),config.production)))page='home';
+  const disclosureScope=JSON.stringify([state.me.id,page]);
+  const previousDisclosures=captureDisclosures($('#app'),disclosureScope);
   const unread=state.notifications.filter(x=>!x.read).length;
   const corePage=page==='workspace'||modules.some(m=>m.id===page);
   const content=page==='identity'?()=>identityPage({state,t,h,btn}):corePage?()=>workspacePage({state,id:page,production:config.production,t,h,ic,btn,person,lang}):({home,social,live,chat,profile:profilePage,explore,notifications,settings,challenges,admin})[page]||home;
@@ -59,6 +62,7 @@ function render(){
   if(page==='settings'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('beforeend',dashboardSettings({state,production:config.production,t,compact:dashboardCompact(state,localStorage)}));
   if(page==='settings'&&!config.production&&state.wellness?.enabled)$('.main-content').insertAdjacentHTML('beforeend',wellnessSettings({state,t,btn}));
   document.querySelectorAll('[data-action=follow]').forEach(el=>{if((state.followRequests||[]).some(r=>r.from===state.me.id&&r.to===el.dataset.id))el.textContent=t('cancelRequest')});
+  restoreDisclosures($('#app'),disclosureScope,previousDisclosures);
   const m=$('.messages');if(m)m.scrollTop=m.scrollHeight;
 }
 function home(){

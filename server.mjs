@@ -369,6 +369,8 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
       names['/core/training-templates.js']='core/training-templates.js';
       names['/core/nutrition-catalog.js']='core/nutrition-catalog.js';
       names['/core/nutrition-ui.js']='core/nutrition-ui.js';
+      names['/core/disclosures.js']='core/disclosures.js';
+      for(const style of ['tokens','base','responsive','modules','training','components'])names['/styles/'+style+'.css']='styles/'+style+'.css';
       const draftModules=['xdraw-engine','exercise-drawing-new','exercise-drawings','exercise-kinematics','exercise-drawing-corrections','exercise-drawing-legacy-tracks','exercise-drawing-anatomy','exercise-apparatus'];
       const draftModule=draftModules.find(name=>url.pathname==='/core/'+name+'.js');
       if(draftModule&&!production){const id=session(req),s=read();assert(id&&profile(s,id)&&!profile(s,id).suspended&&can(s,id,'platform.admin'),'Not authorized',403);names[url.pathname]='core/'+draftModule+'.js'}
