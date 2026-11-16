@@ -1,6 +1,7 @@
 import {tr,langs} from './i18n.js';
 import {modules,canOpen} from './core/modules.js';
 import {workspacePage,toggleSample,toggleCoachLanguage,resetWorkspace} from './core/workspace.js';
+import {identityPage,workspaceRole} from './core/identity-ui.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 if(!langs.includes(lang))lang='ar';
@@ -34,11 +35,12 @@ function nav(key){return `<button class="nav-link ${page===key?'active':''}" dat
 function render(){
   applyTheme();if(!state){auth();return}
   if(page==='admin'&&state.me.role!=='admin')page='home';
-  if((page==='workspace'&&config.production)||(modules.some(m=>m.id===page)&&!canOpen(page,state.me.role,config.production)))page='home';
+  if((page==='workspace'&&config.production)||(page==='identity'&&(!state.identity||config.production))||(modules.some(m=>m.id===page)&&!canOpen(page,workspaceRole(state),config.production)))page='home';
   const unread=state.notifications.filter(x=>!x.read).length;
   const corePage=page==='workspace'||modules.some(m=>m.id===page);
-  const content=corePage?()=>workspacePage({state,id:page,production:config.production,t,h,ic,btn,person,lang}):({home,social,live,chat,profile:profilePage,explore,notifications,settings,challenges,admin})[page]||home;
-  $('#app').innerHTML=`<div class="app-shell"><aside class="sidebar">${brand()}<nav class="nav-list">${navs.map(nav).join('')}${!config.production?nav('workspace'):''}${nav('explore')}${nav('challenges')}${nav('notifications')}${state.me.role==='admin'?nav('admin'):''}</nav><div class="sidebar-footer stack"><div class="row">${avatar(state.me)}<div class="profile-text"><b>${h(state.me.name)}</b><br><small>${t(state.me.role)}</small></div></div>${nav('settings')}${btn(t('logout'),'logout','','secondary','logout')}<div class="notice">${t('local')}</div></div></aside><main class="main"><header class="topbar">${brand()}<span class="title">${t(page)}</span><div class="actions">${langSelect()}${!config.production?btn('', 'nav',`data-id="workspace" aria-label="${t('workspace')}" title="${t('workspace')}"`,'icon-button','dumbbell'):''}<button class="icon-button" data-action="nav" data-id="explore" aria-label="${t('explore')}">${ic('explore')}</button><button class="icon-button" data-action="nav" data-id="notifications" aria-label="${t('notifications')}">${ic('notifications')}${unread?`<span class="green">${unread}</span>`:''}</button><button class="icon-button mobile-only" data-action="nav" data-id="settings" aria-label="${t('settings')}">${ic('settings')}</button></div></header><div class="main-content">${content()}</div></main><nav class="bottom-nav">${navs.map(nav).join('')}</nav></div>`;
+  const content=page==='identity'?()=>identityPage({state,t,h,btn}):corePage?()=>workspacePage({state,id:page,production:config.production,t,h,ic,btn,person,lang}):({home,social,live,chat,profile:profilePage,explore,notifications,settings,challenges,admin})[page]||home;
+  $('#app').innerHTML=`<div class="app-shell"><aside class="sidebar">${brand()}<nav class="nav-list">${navs.map(nav).join('')}${!config.production?nav('workspace'):''}${state.identity&&!config.production?nav('identity'):''}${nav('explore')}${nav('challenges')}${nav('notifications')}${state.me.role==='admin'?nav('admin'):''}</nav><div class="sidebar-footer stack"><div class="row">${avatar(state.me)}<div class="profile-text"><b>${h(state.me.name)}</b><br><small>${t(state.me.role)}</small></div></div>${nav('settings')}${btn(t('logout'),'logout','','secondary','logout')}<div class="notice">${t('local')}</div></div></aside><main class="main"><header class="topbar">${brand()}<span class="title">${t(page)}</span><div class="actions">${langSelect()}${!config.production?btn('', 'nav',`data-id="workspace" aria-label="${t('workspace')}" title="${t('workspace')}"`,'icon-button','dumbbell'):''}<button class="icon-button" data-action="nav" data-id="explore" aria-label="${t('explore')}">${ic('explore')}</button><button class="icon-button" data-action="nav" data-id="notifications" aria-label="${t('notifications')}">${ic('notifications')}${unread?`<span class="green">${unread}</span>`:''}</button><button class="icon-button mobile-only" data-action="nav" data-id="settings" aria-label="${t('settings')}">${ic('settings')}</button></div></header><div class="main-content">${content()}</div></main><nav class="bottom-nav">${navs.map(nav).join('')}</nav></div>`;
+  if(['home','workspace','profile'].includes(page)&&state.identity&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',`<section class="card row wrap workspace-entry"><div class="grow"><h3>${t('identity')}</h3><small>${t('identity_'+state.identity.active.role)} · ${h(state.identity.club?.name||t('identityPersonal'))}</small></div>${btn(t('identitySwitchLabel'),'nav','data-id="identity"','secondary','shield')}</section>`);
   if(page==='home'&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',`<section class="card row wrap workspace-entry"><div class="grow"><h3>${t('workspace')}</h3><small>${t('workspaceIntro')}</small></div>${btn(t('seeAll'),'nav','data-id="workspace"','primary','dumbbell')}</section>`);
   if(page==='settings')$('.main-content').insertAdjacentHTML('beforeend',`<section class="card stack account-panel"><h2>${t('privacy')}</h2>${btn(t('dataExport'),'account','data-id="dataExport"','secondary')}${btn(t('logoutAll'),'account','data-id="logoutAll"','secondary')}${state.me.role!=='admin'?btn(t('deleteAccount'),'account','data-id="deleteAccount"','danger'):''}<div class="row wrap"><a href="/privacy?lang=${lang}">${t('privacyPolicy')}</a><a href="/terms?lang=${lang}">${t('terms')}</a></div></section>`);
   document.querySelectorAll('[data-action=follow]').forEach(el=>{if((state.followRequests||[]).some(r=>r.from===state.me.id&&r.to===el.dataset.id))el.textContent=t('cancelRequest')});
@@ -86,7 +88,11 @@ document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
     case 'nav':page=id;render();window.scrollTo(0,0);break;
-    case 'sampleToggle':if(!config.production&&canOpen(page,state.me.role)){toggleSample(state,page,id);render()}break;
+    case 'sampleToggle':if(!config.production&&canOpen(page,workspaceRole(state))){toggleSample(state,page,id);render()}break;
+    case 'identitySwitch':if(state.identity&&!config.production)await act('identity',{operation:'switch',context:id});break;
+    case 'identityResponse':if(state.identity&&!config.production)await act('identity',{operation:'respond',id,accept:el.dataset.accept==='true'});break;
+    case 'identityRevoke':if(state.identity&&!config.production&&confirm(t('identityRevokeConfirm')))await act('identity',{operation:'revoke',id});break;
+    case 'identityResolve':if(state.identity&&!config.production)await act('identity',{operation:'resolveReport',id});break;
     case 'coachLang':if(!config.production&&page==='coaches'){toggleCoachLanguage(state,id,lang);render()}break;
     case 'jump':page=id;if(tab)liveTab=tab;render();window.scrollTo(0,0);break;
     case 'sessionsNav':page='live';liveTab='sessions';render();break;
@@ -133,6 +139,7 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='identity'){if(!state.identity||config.production)return;await act('identity',{...data,clubId:data.clubId||null});return}
   try{
     const b={...data,...modalPayload};
     if(type==='post'||type==='story')b.image=await imageData(fd.get('image'));

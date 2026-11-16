@@ -9,13 +9,16 @@ Standalone project. No Supabase connection, external service, paid dependency or
 - Separate Arabic, English and Swedish translation dictionaries; retain RTL and existing theme support.
 - Add temporary interactive sample checklists for training, nutrition and daily habits. They are not persistent logs and must not be used for personal health data.
 - Provide coach-directory filtering, initially based on the selected interface language; users may choose multiple languages (any match) or all. Coaches edit spoken languages in their own profile.
-- Add explicit planned-scope cards for the remaining modules. Finance preview is limited to gym/admin roles; no financial records, payment transactions or club management are implemented by these cards.
+- Add explicit planned-scope cards for the remaining modules. Finance preview requires the currently selected club's finance permission; no financial records, payment transactions or club management are implemented by these cards.
+
+## Sprint 02 — completed local identity foundation
+
+The existing accounts now support nine role types, accepted and revocable assignments, club-specific authorization, a role-switching UI, and isolated local demo clubs. See [Identity model](IDENTITY.md). Production still blocks these new local features pending release review.
 
 ## Remaining sprints
 
 | Sprint | Goal | Acceptance gate |
 |---|---|---|
-| 02 | Unified identity and extended authorization | Explicit roles: member, coach, owner, manager, staff, accountant, moderator, admin, super admin; server-enforced role and tenant checks |
 | 03 | Smart dashboard and settings | Role-specific summaries, feature flags, isolated context switching, accessible translations |
 | 04 | Train, nutrition and health | Owner-authenticated CRUD, validation, history, safe handling of sensitive data |
 | 05 | Coach management | Mutually accepted coach/member relation, revocable access, individual programs and progress |

@@ -8,4 +8,5 @@
 .workspace-entry{margin-bottom:18px}.workspace-hero{min-height:180px}.workspace-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.workspace-card{min-height:142px}.workspace-card .badge{margin-top:3px}.sample-task{justify-content:flex-start;white-space:normal;text-align:start}.sample-done{border-color:var(--green);color:var(--green)}.sidebar{overflow-y:auto}.sidebar .nav-list{flex-shrink:0}
 @media(max-width:740px){.workspace-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.workspace-card{min-height:124px}.topbar .tagline{display:none}}
 @media(max-width:360px){.workspace-grid{grid-template-columns:1fr}.topbar .brand img{display:none}.topbar .brand{font-size:13px}}
+.identity-context{display:flex;flex-direction:column;align-items:flex-start;text-align:start;gap:7px;min-height:100px}.identity-context.active{border-color:var(--green);background:color-mix(in srgb,var(--green) 7%,var(--panel))}.identity-context .badge{margin-top:2px}
 

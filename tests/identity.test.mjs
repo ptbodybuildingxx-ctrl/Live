@@ -1,0 +1,70 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createApp} from '../server.mjs';
+import {contexts,can,ensureIdentity,identityAction,identityView} from '../identity.mjs';
+import {workspaceRole,identityPage} from '../dist/core/identity-ui.js';
+import {tr,langs} from '../dist/i18n.js';
+
+test('identity permits only assigned context and exact tenant, not role names supplied by a client', async()=>{
+  const {server,db}=createApp({dbPath:':memory:'});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const url='http://127.0.0.1:'+server.address().port;
+  const request=async(path,b,cookie='')=>{const r=await fetch(url+path,{method:b?'POST':'GET',headers:{...(b?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},body:b?JSON.stringify(b):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
+  const login=role=>request('/api/auth',{mode:'login',email:role+'@demo.local',password:'DemoLive2026!'});
+  const act=(cookie,operation,params={})=>request('/api/action',{type:'identity',operation,...params},cookie);
+  const view=cookie=>request('/api/state',null,cookie);
+  try{
+    const [gym,sara,athlete,coach,admin]=await Promise.all(['gym','sara','athlete','coach','admin'].map(login));
+    for(const account of [gym,sara,athlete,coach,admin])assert.equal(account.status,200);
+    assert.equal(gym.data.identity.active.clubId,'club-iron');
+    assert.equal(workspaceRole(gym.data),'gym');
+    assert.equal(workspaceRole(athlete.data),'athlete');
+    assert.equal((await act(athlete.cookie,'switch',{context:'club-iron:clubOwner'})).status,403);
+    assert.equal((await act(gym.cookie,'switch',{context:'club-north:clubOwner'})).status,403);
+    assert.equal((await act(gym.cookie,'invite',{clubId:'club-north',role:'staff',target:'demo-athlete'})).status,403);
+    assert.equal((await act(gym.cookie,'invite',{clubId:'club-iron',role:'clubOwner',target:'demo-athlete'})).status,403);
+    const grant=await act(gym.cookie,'invite',{clubId:'club-iron',role:'clubManager',target:'demo-athlete'});
+    assert.equal(grant.status,200);const invite=grant.data.identity.invitations.find(v=>v.target==='demo-athlete');
+    assert(!((await view(coach.cookie)).data.identity.invitations.some(v=>v.id===invite.id)));
+    assert.equal((await act(coach.cookie,'respond',{id:invite.id,accept:true})).status,404);
+    assert.equal((await act(athlete.cookie,'switch',{context:'club-iron:clubManager'})).status,403);
+    assert.equal((await act(athlete.cookie,'respond',{id:invite.id,accept:true})).status,200);
+    const manager=await act(athlete.cookie,'switch',{context:'club-iron:clubManager'});
+    assert.equal(manager.status,200);assert(manager.data.identity.permissions.includes('club.roster'));assert(manager.data.identity.roster.length>0);
+    assert.equal((await act(athlete.cookie,'invite',{clubId:'club-iron',role:'accountant',target:'demo-coach'})).status,403);
+    const inIron=await act(sara.cookie,'switch',{context:'club-iron:accountant'});
+    assert.equal(inIron.status,200);assert(inIron.data.identity.permissions.includes('club.finance.read'));assert.deepEqual(inIron.data.identity.roster,[]);
+    const north=await act(sara.cookie,'switch',{context:'club-north:clubOwner'});
+    assert.equal(north.status,200);assert(north.data.identity.roster.every(x=>x.userId==='demo-sara'));
+    const managerGrant=(await view(gym.cookie)).data.identity.roster.find(g=>g.userId==='demo-athlete'&&g.role==='clubManager');
+    assert.equal((await act(sara.cookie,'revoke',{id:managerGrant.id})).status,403);
+    assert.equal((await act(gym.cookie,'revoke',{id:managerGrant.id})).status,200);
+    const removed=(await view(athlete.cookie)).data.identity;
+    assert.notEqual(removed.active.role,'clubManager');assert(!removed.permissions.includes('club.roster'));
+    assert.equal((await act(athlete.cookie,'switch',{context:'club-iron:clubManager'})).status,403);
+    assert.equal((await act(admin.cookie,'switch',{context:'club-iron:clubOwner'})).status,403);
+    assert.equal((await act(admin.cookie,'switch',{context:'personal:superAdmin'})).status,200);
+    const mod=await act(admin.cookie,'invite',{clubId:null,role:'moderator',target:'demo-coach'});assert.equal(mod.status,200);
+    const modInvite=mod.data.identity.invitations.find(v=>v.role==='moderator');assert.equal((await act(coach.cookie,'respond',{id:modInvite.id,accept:true})).status,200);
+    const modView=await act(coach.cookie,'switch',{context:'personal:moderator'});assert.equal(modView.status,200);assert(!modView.data.admin);
+    assert.equal((await act(coach.cookie,'invite',{clubId:null,role:'superAdmin',target:'demo-athlete'})).status,403);
+    assert.equal((await request('/api/action',{type:'admin',operation:'suspend',id:'demo-athlete'},coach.cookie)).status,403);
+    assert.equal((await request('/api/action',{type:'report',targetType:'post',id:'post-2',reason:'Local moderation test'},athlete.cookie)).status,200);
+    const report=(await view(coach.cookie)).data.identity.reportList.find(r=>r.reason==='Local moderation test');assert(report);
+    assert.equal((await act(athlete.cookie,'resolveReport',{id:report.id})).status,403);
+    assert.equal((await act(coach.cookie,'resolveReport',{id:report.id})).status,200);
+    assert(!((await view(coach.cookie)).data.identity.reportList.some(r=>r.id===report.id)));
+    const exportData=await request('/api/account',{operation:'export',password:'DemoLive2026!'},athlete.cookie);assert.equal(exportData.status,200);assert(exportData.data.identity.grants.every(g=>g.userId==='demo-athlete'));
+    assert.equal((await request('/api/account',{operation:'delete',password:'DemoLive2026!',confirm:true},gym.cookie)).status,409);
+    assert.equal((await fetch(url+'/core/identity-ui.js')).status,200);
+    for(const lang of langs)assert.match(identityPage({state:north.data,t:k=>tr(k,lang),h:String,btn:()=>''}),/North Fitness/);
+  }finally{await new Promise(resolve=>server.close(resolve));db.close()}
+});
+
+test('migration does not derive owner or admin rights from registered profile types',()=>{
+  const s=ensureIdentity({profiles:[{id:'new',role:'gym',verified:false}],reports:[],audit:[]});
+  assert.deepEqual(contexts(s,'new').map(x=>x.role),['member']);
+  assert.throws(()=>identityAction(s,'new',{operation:'createClub',name:'Test Gym'}),/Verified gym required/);
+  assert.equal(can(s,'new','club.finance.read','club-iron'),false);
+  assert.equal(identityView(s,'new').club,null);
+});

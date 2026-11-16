@@ -1,4 +1,5 @@
 import {allowedModules,canOpen,filterCoaches,samples} from './modules.js';
+import {workspaceRole} from './identity-ui.js';
 
 // Deliberately temporary examples only. No health/finance data or credentials are stored here.
 const checked=new Map();
@@ -16,9 +17,9 @@ export function toggleCoachLanguage(state,language,currentLanguage){
 }
 export function resetWorkspace(){checked.clear();selections.clear()}
 export function workspacePage({state,id,production,t,h,ic,btn,person,lang}){
-  const permitted=allowedModules(state.me.role,production);
+  const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production);
   if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><div class="grid workspace-grid">${permitted.map(m=>`<button class="card quick workspace-card" data-action="nav" data-id="${m.id}">${ic(m.icon)}<b>${t(m.id)}</b><span class="badge ${m.stage==='prototype'?'green':'gold'}">${t(m.stage)}</span><small>${t(m.items[0])}</small></button>`).join('')}</div></div>`;
-  if(!canOpen(id,state.me.role,production))return '';
+  if(!canOpen(id,effectiveRole,production))return '';
   const module=permitted.find(m=>m.id===id);
   const done=checked.get(sessionKey(state,id))||new Set();
   const demo=samples[id]?`<section class="card stack"><h2>${t('sampleChecklist')}</h2><p class="muted">${t('sampleNotice')}</p><div class="progress"><span style="width:${Math.round(done.size/samples[id].length*100)}%"></span></div>${samples[id].map(item=>`<button class="secondary sample-task ${done.has(item)?'sample-done':''}" aria-pressed="${done.has(item)}" data-action="sampleToggle" data-id="${item}">${ic(done.has(item)?'check':'plus')}${t(item)}</button>`).join('')}<small>${done.size} / ${samples[id].length} ${t('done')}</small></section>`:'';
