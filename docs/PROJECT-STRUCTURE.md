@@ -6,11 +6,13 @@ build step. Keep the local SQLite database, secrets and backups out of Git.
 
 | Location | Responsibility |
 | --- | --- |
-| `server.mjs` | HTTP routing, authorization, action dispatch and static asset allowlist |
+| `server.mjs` | HTTP routing, authorization and action dispatch |
+| `server/static-assets.mjs` | Explicit public asset routes, MIME types and protected draft routes |
 | `identity.mjs`, `coaching.mjs` | Account contexts, permissions and coaching relationships |
 | `training.mjs`, `nutrition.mjs`, `wellness.mjs`, `health.mjs`, `rehab.mjs`, `library.mjs` | Independent domain logic |
 | `club-ops.mjs`, `club-chat.mjs`, `programs.mjs` | Club and program domains |
 | `dist/app.js` | Application shell, navigation and event dispatch |
+| `dist/core/api-client.js` | Same-origin JSON API requests and consistent error handling |
 | `dist/core/` | Domain UI modules, registries, calculators and shared disclosure helpers |
 | `dist/languages/` | Independent `ar.js`, `en.js`, `sv.js` dictionaries |
 | `dist/styles/` | Shared stylesheets loaded from `dist/app.css` |

@@ -1,4 +1,5 @@
 import {tr,langs} from './i18n.js';
+import {api} from './core/api-client.js';
 import {modules,canOpen} from './core/modules.js';
 import {workspacePage,toggleSample,toggleCoachLanguage,resetWorkspace} from './core/workspace.js';
 import {identityPage,workspaceRole} from './core/identity-ui.js';
@@ -40,7 +41,6 @@ const empty=()=>`<div class="empty">${t('noItems')}</div>`;
 const heading=(key,action='',label='seeAll')=>`<div class="section-head"><h2>${t(key)}</h2>${action?btn(t(label),action,'','chip'):''}</div>`;
 const art=()=>`<svg class="hero-art" viewBox="0 0 300 280" fill="none" aria-hidden="true"><g opacity=".26" stroke="#39FF88"><circle cx="190" cy="135" r="106"/><circle cx="190" cy="135" r="82"/><circle cx="190" cy="135" r="55"/><path d="M25 135h280M190 0v280"/></g><g transform="translate(166 132) rotate(-28)"><rect x="-104" y="-7" width="208" height="14" rx="7" fill="#A1C9AE"/><rect x="-102" y="-38" width="20" height="76" rx="5" fill="#39FF88"/><rect x="-80" y="-54" width="26" height="108" rx="6" fill="#216740"/><rect x="-55" y="-45" width="19" height="90" rx="4" fill="#39FF88"/><rect x="36" y="-45" width="19" height="90" rx="4" fill="#39FF88"/><rect x="55" y="-54" width="26" height="108" rx="6" fill="#216740"/><rect x="82" y="-38" width="20" height="76" rx="5" fill="#39FF88"/></g><path d="m229 27-40 47h25l-10 36 49-53h-29z" fill="#39FF88" opacity=".4"/></svg>`;
 function person(p,actions='',extra=''){return `<div class="person-row">${avatar(p)}<div class="grow"><div class="row wrap"><b>${h(p.name)}</b>${p.verified?badge('✓ '+t('verified')):''}</div><small>${h(t(p.role))} · ${h(p.city||'—')} · ${h(p.sport||'—')}</small><div><small>${status(p)}</small></div>${extra}</div>${actions}</div>`}
-function api(path,body){return fetch('/api/'+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined}).then(async r=>{const j=await r.json();if(!r.ok)throw Object.assign(new Error(j.error),{status:r.status});return j})}
 function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('visible'),3500)}
 function applyTheme(){document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.documentElement.dataset.theme=state?.me.theme||localStorage.getItem('ml-theme')||'dark'}
 const langSelect=()=>`<select class="lang" id="lang-select" aria-label="${t('language')}">${langs.map(x=>`<option value="${x}" ${lang===x?'selected':''}>${x.toUpperCase()}</option>`).join('')}</select>`;

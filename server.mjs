@@ -17,6 +17,7 @@ import {trainingView,trainingAction,trainingExport,removeTraining,clearTraining,
 import {nutritionView,nutritionAction,nutritionExport,clearNutrition} from './nutrition.mjs';
 import {libraryFileRow,libraryAttachFile,libraryFileAudit} from './library.mjs';
 import {libraryPdfLimit,libraryTotalPdfLimit} from './dist/core/library-schema.js';
+import { staticAsset, contentTypes } from './server/static-assets.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const uuid = randomUUID;
@@ -396,30 +397,17 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
         }
         return json(res,{error:'Not found'},404);
       }
-      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/core/wellness-schema.js':'core/wellness-schema.js','/core/wellness-ui.js':'core/wellness-ui.js','/core/coaching-ui.js':'core/coaching-ui.js','/core/club-ops-ui.js':'core/club-ops-ui.js','/core/club-chat-ui.js':'core/club-chat-ui.js','/core/programs-ui.js':'core/programs-ui.js','/core/training-ui.js':'core/training-ui.js','/core/exercise-catalog.js':'core/exercise-catalog.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
-      names['/core/xdraw-ui.js']='core/xdraw-ui.js';
-      names['/core/training-templates.js']='core/training-templates.js';
-      names['/core/nutrition-catalog.js']='core/nutrition-catalog.js';
-      names['/core/nutrition-ui.js']='core/nutrition-ui.js';
-      names['/core/disclosures.js']='core/disclosures.js';
-      names['/core/health-ui.js']='core/health-ui.js';
-      names['/core/health-config.js']='core/health-config.js';
-      names['/core/health-insights.js']='core/health-insights.js';
-      names['/core/rehab-schema.js']='core/rehab-schema.js';
-      names['/core/rehab-ui.js']='core/rehab-ui.js';
-      names['/core/library-schema.js']='core/library-schema.js';
-      names['/core/library-ui.js']='core/library-ui.js';
-      names['/core/campaign-ui.js']='core/campaign-ui.js';
-      names['/core/directory-ui.js']='core/directory-ui.js';
-      names['/core/events-ui.js']='core/events-ui.js';
-      names['/core/master-admin-ui.js']='core/master-admin-ui.js';
-      for(const style of ['tokens','base','responsive','modules','training','components'])names['/styles/'+style+'.css']='styles/'+style+'.css';
-      const draftModules=['xdraw-engine','exercise-drawing-new','exercise-drawings','exercise-kinematics','exercise-drawing-corrections','exercise-drawing-legacy-tracks','exercise-drawing-anatomy','exercise-apparatus'];
-      const draftModule=draftModules.find(name=>url.pathname==='/core/'+name+'.js');
-      if(draftModule&&!production){const id=session(req),s=read();assert(id&&profile(s,id)&&!profile(s,id).suspended&&can(s,id,'platform.admin'),'Not authorized',403);names[url.pathname]='core/'+draftModule+'.js'}
-      const file=names[url.pathname];if(!file){res.writeHead(404);return res.end('Not found')}
-      const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
-      res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':draftModule?'no-store':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));
+      const asset = staticAsset(url.pathname, production);
+      if (!asset) { res.writeHead(404); return res.end('Not found'); }
+      if (asset.draft) {
+        const id = session(req), s = read();
+        assert(id && profile(s,id) && !profile(s,id).suspended && can(s,id,'platform.admin'), 'Not authorized', 403);
+      }
+      res.writeHead(200, {
+        'Content-Type': contentTypes[extname(asset.file)],
+        'Cache-Control': asset.draft ? 'no-store' : 'no-cache',
+      });
+      res.end(readFileSync(resolve(root, 'dist', asset.file)));
     }catch(e){json(res,{error:e.status?e.message:'Internal error'},e.status||500);if(!e.status)console.error(e)}
   });
   server.requestTimeout=15000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=80;
