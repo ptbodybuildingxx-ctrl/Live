@@ -129,6 +129,7 @@ document.addEventListener('click',async e=>{
       if(ok&&op==='planCopy'){trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);render()}
     }break;
     case 'programAction':if(!config.production&&state.programs){
+      if(op==='eventCancel'&&!confirm(t('eventCancelConfirm')))break;
       if(op==='libraryPdfRemove'){if(confirm(t('programConfirm')))await libraryPdfChange(id,null,true);break}
       if(op==='download'){const r=state.programs.items.find(x=>x.module==='library'&&x.id===id);if(r){const url=URL.createObjectURL(new Blob([r.title+'\n'+r.author+'\n'+r.rightsNote+'\n\n'+r.content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='musclivo-'+r.id+'.txt';a.click();URL.revokeObjectURL(url)}break;}
       if(!['delete','archive','rehabCheckinDelete','rehabTaskDelete','rehabContentArchive','libraryClear'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true',taskId:el.dataset.task,checkinId:el.dataset.checkin,completed:el.dataset.completed==='true',favorite:el.dataset.favorite==='true'});

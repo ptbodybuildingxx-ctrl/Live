@@ -26,6 +26,13 @@ const participants=(s,row)=>read(s).entries.filter(e=>e.itemId===row.id&&eligibl
 const confirmed=(s,row)=>participants(s,row).slice(0,row.capacity);
 const eventStatus=(s,row)=>row.status!=='published'?row.status:row.end<today()?'ended':confirmed(s,row).length>=row.minimum?'confirmed':'pending';
 const eventState=(s,row)=>({confirmed:eventStatus(s,row)==='confirmed',seats:new Set(confirmed(s,row).map(e=>e.owner))});
+const eventRegistrationOpen=row=>row.status==='published'&&row.registrationOpen!==false&&today()<=(row.registrationEnd||row.end)&&today()<=row.end;
+const eventAttendanceAllowed=(s,row)=>row.status==='published'&&today()>=row.start&&confirmed(s,row).length>=row.minimum;
+const attendanceState=e=>e?.attended===true?'present':e?.attendanceMarked?'absent':'unmarked';
+function eventCancellation(s,row){
+  const labels={en:'Event cancelled',ar:'تم إلغاء الفعالية',sv:'Evenemang inställt'};
+  for(const e of participants(s,row)){const p=profile(s,e.owner);if(p?.privacy.notifications)s.notifications.unshift({id:randomUUID(),owner:e.owner,actor:null,text:(labels[p.lang]||labels.en)+': '+row.title,at:Date.now(),read:false})}
+}
 function eventChanges(s,row,before){
   if(row.module!=='events'||row.status!=='published')return;
   const after=eventState(s,row);
@@ -47,7 +54,11 @@ function itemBody(module,b,previous){
   if(module==='events'){
     const minimum=num(b.minimum,1,500),capacity=num(b.capacity,minimum,500);
     need(typeof b.time==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time),'Invalid UTC start time');
-    return {...base,start,end,time:b.time,location:txt(b.location,160),minimum,capacity};
+    const registrationEnd=date(b.registrationEnd??previous?.registrationEnd??end);
+    need(registrationEnd<=end,'Registration deadline after end date');
+    const eventCategory=b.eventCategory??previous?.eventCategory??'other';need(['group','workshop','competition','other'].includes(eventCategory),'Invalid event category');
+    const waitlistEnabled=b.waitlistEnabled??previous?.waitlistEnabled??true;need(typeof waitlistEnabled==='boolean','Invalid waitlist setting');
+    return {...base,start,end,time:b.time,location:txt(b.location,160),minimum,capacity,registrationEnd,eventCategory,waitlistEnabled,registrationOpen:previous?.registrationOpen!==false};
   }
   need(['ramadan','startfit'].includes(b.category),'Invalid campaign');
   const capacity=b.campaignCapacity===undefined?(previous?.capacity??null):b.campaignCapacity===null?null:num(b.campaignCapacity,1,1000);
@@ -71,13 +82,14 @@ function publicItem(s,id,row){
   const {createdBy,...fields}=row;
   const event=row.module==='events', seats=event?confirmed(s,row):e;
   return {...fields,...(row.module==='library'?libraryFields(row):{}),...(row.module==='campaigns'?campaignFields(row,own,e):{}),manage:m,count:seats.length,waitCount:event?e.length-seats.length:0,waiting:!!own&&event&&!seats.includes(own),joined:!!own,checkins:own?.checkins||[],eventStatus:event?eventStatus(s,row):undefined,
-    ...(m&&row.module!=='library'?{roster:e.map(x=>({id:x.owner,name:profile(s,x.owner)?.name,checkins:x.checkins.length,attended:!!x.attended,waiting:event&&!seats.includes(x)}))}:{})};
+    ...(event?{registrationEnd:row.registrationEnd||row.end,eventCategory:row.eventCategory||'other',waitlistEnabled:row.waitlistEnabled!==false,registrationOpen:row.registrationOpen!==false,signupAvailable:eventRegistrationOpen(row)&&e.length<(row.capacity+(row.waitlistEnabled===false?0:500)),canLeave:!!own&&row.status==='published'&&today()<=row.end&&attendanceState(own)==='unmarked',waitPosition:own&&!seats.includes(own)?e.indexOf(own)-seats.length+1:null,attendanceState:own?attendanceState(own):null,...(m?{canMarkAttendance:eventAttendanceAllowed(s,row),attendanceSummary:{present:seats.filter(x=>attendanceState(x)==='present').length,absent:seats.filter(x=>attendanceState(x)==='absent').length,unmarked:seats.filter(x=>attendanceState(x)==='unmarked').length}}:{})}:{}),
+    ...(m&&row.module!=='library'?{roster:e.map(x=>({id:x.owner,name:profile(s,x.owner)?.name,checkins:x.checkins.length,attended:!!x.attended,waiting:event&&!seats.includes(x),...(event?{attendanceState:attendanceState(x)}:{})}))}:{})};
 }
 export function programsView(s,id){
   if(!s.identity)return undefined;
   const d=read(s),ctx=activeContext(s,id),isAdmin=admin(s,id),p=personal(s,id);
   return {flags:Object.fromEntries(programModules.map(k=>[k,enabled(s,k)])),canAdmin:isAdmin,canClubEvents:!!ctx?.clubId&&can(s,id,'club.manage',ctx.clubId),
-    items:d.items.filter(r=>(enabled(s,r.module)||isAdmin)&&scope(s,id,r)&&(r.status==='published'||manage(s,id,r))).map(r=>publicItem(s,id,r)),
+    items:d.items.filter(r=>(enabled(s,r.module)||isAdmin)&&scope(s,id,r)&&(r.status==='published'||r.module==='events'&&r.status==='cancelled'&&participants(s,r).some(e=>e.owner===id)||manage(s,id,r))).map(r=>publicItem(s,id,r)),
     ...(p&&enabled(s,'rehab')?{rehab:rehabView(s,id,d)}:{}),
     ...(isAdmin||(p&&enabled(s,'rehab'))?{rehabContent:rehabContentView(d,isAdmin,enabled(s,'rehab'))}:{}),
     library:libraryReaderView(s,id,d),
@@ -104,17 +116,25 @@ export function programsAction(s,id,b){
   }
   const r=d.items.find(x=>x.id===b.id&&x.module===module&&scope(s,id,x));need(r,'Content not found',404);
   const before=module==='events'?eventState(s,r):null;
-  if(['update','publish','archive','draft','attendance','campaignSignup'].includes(op)){
+  if(['update','publish','archive','draft','attendance','campaignSignup','eventRegistration','eventCancel'].includes(op)){
     need(manage(s,id,r),'Management permission required',403);
+    if(module==='events'){
+      need(!r.cancelledAt&&r.status!=='cancelled'||op==='archive','Cancelled event cannot be reopened',409);
+      if(['update','draft'].includes(op))need(!participants(s,r).some(e=>attendanceState(e)!=='unmarked'),'Attendance already recorded',409);
+    }
     if(op==='update'){
       const body=itemBody(module,b,r);need(module!=='events'||body.capacity>=confirmed(s,r).length,'Capacity below enrollment');
       need(module!=='campaigns'||body.capacity===null||body.capacity>=participants(s,r).length,'Capacity below enrollment');
       Object.assign(r,body,{status:'draft'});
     }else if(op==='campaignSignup'){
       need(module==='campaigns'&&typeof b.enabled==='boolean','Invalid campaign signup');r.enrollmentOpen=b.enabled;
+    }else if(op==='eventRegistration'){
+      need(module==='events'&&typeof b.enabled==='boolean','Invalid registration setting');r.registrationOpen=b.enabled;
+    }else if(op==='eventCancel'){
+      need(module==='events'&&r.status==='published'&&today()<=r.end&&!participants(s,r).some(e=>attendanceState(e)!=='unmarked'),'Active event without attendance required',409);r.status='cancelled';r.cancelledAt=Date.now();r.registrationOpen=false;eventCancellation(s,r);
     }else if(op==='attendance'){
-      need(module==='events'&&typeof b.attended==='boolean'&&eventStatus(s,r)==='confirmed'&&today()>=r.start,'Confirmed event required');
-      const e=confirmed(s,r).find(e=>e.owner===b.target);need(e,'Participant not found',404);e.attended=b.attended;
+      need(module==='events'&&typeof b.attended==='boolean'&&eventAttendanceAllowed(s,r),'Confirmed event required');
+      const e=confirmed(s,r).find(e=>e.owner===b.target);need(e,'Participant not found',404);e.attended=b.attended;e.attendanceMarked=true;
     }else r.status={publish:'published',archive:'archived',draft:'draft'}[op];
     audit(s,id,op,r.id,module);eventChanges(s,r,before);return;
   }
@@ -122,11 +142,12 @@ export function programsAction(s,id,b){
   const context=activeContext(s,id);
   need(personal(s,id)||!!context?.clubId&&can(s,id,'club.read',context.clubId),'Use participant context',403);
   const e=d.entries.find(x=>x.itemId===r.id&&x.owner===id);
-  if(op==='leave'){d.entries=d.entries.filter(x=>x!==e);eventChanges(s,r,before);return}
+  if(op==='leave'){need(module!=='events'||today()<=r.end&&attendanceState(e)==='unmarked','Attendance history cannot be withdrawn',409);d.entries=d.entries.filter(x=>x!==e);eventChanges(s,r,before);return}
   if(op==='join'){
     need(today()<=r.end,'Registration closed',409);need(!e,'Already enrolled',409);
     need(module!=='campaigns'||r.enrollmentOpen!==false,'Registration closed',409);
-    need(participants(s,r).length<(module==='events'?r.capacity+500:r.capacity??1000),'Enrollment limit',429);
+    need(module!=='events'||eventRegistrationOpen(r),'Registration closed',409);
+    need(participants(s,r).length<(module==='events'?r.capacity+(r.waitlistEnabled===false?0:500):r.capacity??1000),'Enrollment limit',429);
     d.entries.push({itemId:r.id,owner:id,checkins:[],attended:false});eventChanges(s,r,before);return;
   }
   if(op==='checkin'){need(module==='campaigns'&&e&&active(r),'Active campaign enrollment required',403);need(!e.checkins.includes(today()),'Already checked in',409);e.checkins.push(today());return}

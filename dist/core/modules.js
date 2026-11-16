@@ -8,7 +8,7 @@ export const modules = [
   {id:'coaches',icon:'profile',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['coachDirectory','coachPrograms','traineeProgress']},
   {id:'clubs',icon:'social',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['clubDirectory','branches','memberships','staff']},
   {id:'finance',icon:'calendar',roles:['gym','admin'],stage:'prototype',items:['income','expenses','invoices','financeReports']},
-  {id:'events',icon:'calendar',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['programParticipants']},
+  {id:'events',icon:'calendar',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['programParticipants','programWaitlist','eventRoster']},
   {id:'campaigns',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['ramadan','startfit','campaignAdmin']},
   {id:'ramadan',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['campaignTasks','campaignMyProgress']},
   {id:'startfit',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['campaignTasks','campaignMyProgress']},

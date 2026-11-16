@@ -398,6 +398,7 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
       names['/core/library-ui.js']='core/library-ui.js';
       names['/core/campaign-ui.js']='core/campaign-ui.js';
       names['/core/directory-ui.js']='core/directory-ui.js';
+      names['/core/events-ui.js']='core/events-ui.js';
       for(const style of ['tokens','base','responsive','modules','training','components'])names['/styles/'+style+'.css']='styles/'+style+'.css';
       const draftModules=['xdraw-engine','exercise-drawing-new','exercise-drawings','exercise-kinematics','exercise-drawing-corrections','exercise-drawing-legacy-tracks','exercise-drawing-anatomy','exercise-apparatus'];
       const draftModule=draftModules.find(name=>url.pathname==='/core/'+name+'.js');

@@ -1,0 +1,9 @@
+# MUSCLIVO EVENTS PRO — local prototype
+
+Public events remain platform-administrator managed; club events remain scoped to the active club and its management permissions. Drafts have a category, content language, date range, UTC start time, location, minimum attendance, capacity, registration deadline and optional waiting list. An administrator publishes the draft, opens/closes the registration independently, or permanently cancels a published, not-ended event without recorded attendance. Cancellation notifies enrolled users (including waitlisted users) who enable notifications. A cancelled event cannot be republished, even after archiving.
+
+Participants see only eligible events and their own enrollment, queue position and attendance status. The first registered users fill the available seats and the waiting queue promotes in registration order. The minimum threshold and seat-promotion alerts remain intact. Registration is available through the deadline date (UTC), with no additional payment or external service. Leaving after the event or after attendance is recorded is blocked to preserve the attendance history; account export and deletion remain available.
+
+Managers see a private roster, exact present/absent/unrecorded counts, and can record or correct attendance from the start date for confirmed seats. Attendance is not allowed for cancelled/draft events, waitlisted participants or before the start date. Edits and return to draft are blocked once attendance has been recorded. The event page supports keyword, language, category and status filtering, including own registrations and managed events.
+
+Existing event records have compatible defaults. All pages use the shared design system and separate Arabic, English and Swedish translation files. Nothing is seeded for real events and no production gate, Supabase connection or paid dependency changes.
