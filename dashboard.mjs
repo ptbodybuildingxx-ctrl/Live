@@ -21,7 +21,7 @@ export function dashboardView(s,id,identity,flags,coaching,clubOps) {
   if(has('coach.programs')){const planned=!!active.clubId||s.profiles.find(p=>p.id===id)?.verified!==true;link('coachPrograms','coaches',planned);link('traineeProgress','coaches',planned)}
   if(coaching)metric('coachingIncoming',coaching.links.filter(l=>l.status==='pending'&&l.incoming).length);
   if(active.clubId&&has('club.read')){
-    link('dashboardClubContext','identity');link('clubs','clubs');
+    link('dashboardClubContext','identity');link('clubs','clubs');link('clubChatTitle','chat');
     if(has('club.roster'))metric('dashboardClubAccounts',new Set(roster.map(g=>g.userId)).size);
     if(has('club.assign')){
       metric('dashboardPendingInvites',invitations.filter(v=>v.clubId===active.clubId&&v.status==='pending').length);

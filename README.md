@@ -12,6 +12,8 @@
 
 **Sprint 06 — local clubs and finance:** Club owners and managers can manage branches, subscription plans and memberships; accepted members see their own subscriptions and invoices. Owners and accountants can record manual income, expenses and invoices. Managers have read-only finance. Reports and audit are isolated to the selected club. No real payment processing. See [Clubs and finance](docs/CLUBS-FINANCE.md).
 
+**Sprint 07 — local community and chat:** Existing personal chats remain intact. Club contexts now have role-gated general, staff, coach and finance rooms plus custom groups with accepted invitations. Membership, blocking and report evidence are enforced on the server. See [Club chat](docs/CHAT.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

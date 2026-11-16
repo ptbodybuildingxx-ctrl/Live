@@ -391,6 +391,25 @@ export default {
   "clubOp_ledgerVoid": "Makulera bokföringspost",
   "clubOp_invoiceCreate": "Utfärda faktura",
   "clubOp_invoicePaid": "Registrera fakturabetalning",
-  "clubOp_invoiceVoid": "Makulera faktura"
+  "clubOp_invoiceVoid": "Makulera faktura",
+  "clubChatTitle": "Klubbrum",
+  "clubChatPersonal": "Personliga chattar",
+  "clubChatContext": "Välj en tilldelad klubbkontext för att komma åt dess rum.",
+  "clubChatNotice": "Lokal testchatt. Din aktuella klubb och roll styr åtkomsten; ange inga riktiga person-, ekonomi- eller hälsouppgifter.",
+  "clubRoom_club": "Allmänt klubbrum",
+  "clubRoom_staff": "Personal",
+  "clubRoom_coach": "Tränare",
+  "clubRoom_finance": "Ekonomi",
+  "clubChatLeave": "Lämna grupp",
+  "clubChatArchived": "Arkiverad grupp – skrivskyddad.",
+  "clubChatManage": "Hantera egna grupper",
+  "clubChatManageNotice": "Endast behöriga klubbmedlemmar kan bjudas in. De måste godkänna innan de läser eller skickar meddelanden. Grupphantering ger inte i sig meddelandeåtkomst.",
+  "clubChatCategory": "Rumskategori",
+  "clubChatCreate": "Skapa egen grupp",
+  "clubChatInvite": "Bjud in behörigt konto",
+  "clubChatRemoveMember": "Ta bort medlem",
+  "clubChatConfirm": "Bekräfta ändringen? Befintlig åtkomst kan återkallas.",
+  "clubChatBlockConfirm": "Blockera detta konto? Dess meddelanden döljs och direktmeddelanden begränsas.",
+  "clubChatReportNotice": "Rapportering delar endast det valda meddelandet och din anledning med behöriga moderatorer, inte resten av konversationen."
 };
 

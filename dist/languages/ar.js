@@ -391,6 +391,25 @@ export default {
   "clubOp_ledgerVoid": "إبطال قيد مالي",
   "clubOp_invoiceCreate": "إصدار فاتورة",
   "clubOp_invoicePaid": "تسجيل دفع فاتورة",
-  "clubOp_invoiceVoid": "إبطال فاتورة"
+  "clubOp_invoiceVoid": "إبطال فاتورة",
+  "clubChatTitle": "غرف النادي",
+  "clubChatPersonal": "المحادثات الشخصية",
+  "clubChatContext": "اختر سياق نادٍ معيّن للوصول إلى غرفه.",
+  "clubChatNotice": "محادثة اختبار محلية. يحدد النادي والدور الحاليان صلاحية الوصول؛ لا تدخل بيانات شخصية أو مالية أو صحية حقيقية.",
+  "clubRoom_club": "النادي العام",
+  "clubRoom_staff": "الموظفون",
+  "clubRoom_coach": "المدربون",
+  "clubRoom_finance": "المالية",
+  "clubChatLeave": "مغادرة المجموعة",
+  "clubChatArchived": "مجموعة مؤرشفة — للقراءة فقط.",
+  "clubChatManage": "إدارة المجموعات المخصصة",
+  "clubChatManageNotice": "يمكن دعوة حسابات النادي المؤهلة فقط. يجب أن توافق قبل قراءة الرسائل أو إرسالها. إدارة المجموعة وحدها لا تمنح حق قراءة الرسائل.",
+  "clubChatCategory": "نوع الغرفة",
+  "clubChatCreate": "إنشاء مجموعة مخصصة",
+  "clubChatInvite": "دعوة حساب مؤهل",
+  "clubChatRemoveMember": "إزالة عضو",
+  "clubChatConfirm": "هل تؤكد هذا التغيير؟ قد يؤدي إلى إلغاء الوصول القائم.",
+  "clubChatBlockConfirm": "حظر هذا الحساب؟ سيتم إخفاء رسائله وتقييد المراسلة المباشرة.",
+  "clubChatReportNotice": "يشارك الإبلاغ الرسالة المحددة وسبب الإبلاغ فقط مع المشرفين المصرح لهم، وليس باقي المحادثة."
 };
 

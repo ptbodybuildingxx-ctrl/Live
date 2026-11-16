@@ -51,7 +51,7 @@ export function identityView(s,id){
   const club=c?.clubId?i.clubs.find(cl=>cl.id===c.clubId):null;
   const roster=club&&can(s,id,'club.roster',club.id)?i.grants.filter(g=>g.clubId===club.id&&activeProfile(s,g.userId)).map(g=>({id:g.id,userId:g.userId,name:getProfile(s,g.userId).name,role:g.role})):[];
   const invites=i.invitations.filter(v=>v.target===id||(club&&v.clubId===club.id&&can(s,id,'club.assign',club.id))||(!v.clubId&&can(s,id,'platform.assign'))).map(v=>({...v,clubName:i.clubs.find(cl=>cl.id===v.clubId)?.name||null,targetName:getProfile(s,v.target)?.name||null}));
-  const reportList=can(s,id,'platform.moderate')?s.reports.filter(r=>r.state==='pending').map(r=>({id:r.id,targetType:r.targetType,reason:r.reason,at:r.at})):[];
+  const reportList=can(s,id,'platform.moderate')?s.reports.filter(r=>r.state==='pending').map(r=>({id:r.id,targetType:r.targetType,reason:r.reason,at:r.at,...(r.evidence?{evidence:{text:r.evidence.text}}:{})})):[];
   const platformAssignments=can(s,id,'platform.assign')?i.grants.filter(g=>!g.clubId&&g.role==='moderator').map(g=>({id:g.id,userId:g.userId,name:getProfile(s,g.userId)?.name||'',role:g.role})):[];
   return {contexts:ctx,active:c,permissions:contextPermissions(c),club:club?{id:club.id,name:club.name}:null,roster,invitations:invites,reportList,platformAssignments};
 }

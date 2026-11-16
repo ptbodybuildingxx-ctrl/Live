@@ -31,11 +31,14 @@ Verified coaches and trainees can establish a mutually approved personal-context
 
 Club owners/managers manage branches, accepted-member subscriptions and plans; members see their own active club records and invoices. Club owners/accountants manage a manual ledger and issued, paid or void invoices. Managers have finance read-only access. Amounts use integer minor units; SEK/EUR/USD reports are separate. Club-context checks, append-only audit and invoice-linked ledger corrections prevent cross-tenant access or double recording. No actual transactions or tax-qualified invoicing. See [Clubs and finance](CLUBS-FINANCE.md).
 
+## Sprint 07 — local community and clubs chat
+
+Personal direct/group chat remains available. The chat workspace now separates club rooms by active club and role, with built-in general, staff, coach and finance channels. Managers may create custom groups and invite eligible, consenting members without automatically gaining access to their private content. Reporting discloses only a selected message and reason, blocking hides messages, and role revocation removes custom memberships. See [Chat](CHAT.md).
+
 ## Remaining sprints
 
 | Sprint | Goal | Acceptance gate |
 |---|---|---|
-| 07 | Community and chat | Club/staff/finance groups with membership enforcement, reporting and blocking |
 | 08 | Live, Ramadan, StartFit, library and rehab | Admin-managed campaigns, group threshold events, rights-cleared library and consent-based rehab |
 | 09 | Administration | Module rollout flags, moderation and role-specific audit, no unrestricted private-data access |
 | 10 | Local acceptance and release preparation | Automated tests, responsive and multilingual checks, privacy review, backups and a documented release gate |

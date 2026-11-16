@@ -391,6 +391,25 @@ export default {
   "clubOp_ledgerVoid": "Void ledger entry",
   "clubOp_invoiceCreate": "Issue invoice",
   "clubOp_invoicePaid": "Record invoice payment",
-  "clubOp_invoiceVoid": "Void invoice"
+  "clubOp_invoiceVoid": "Void invoice",
+  "clubChatTitle": "Club rooms",
+  "clubChatPersonal": "Personal chats",
+  "clubChatContext": "Select an assigned club context to access its rooms.",
+  "clubChatNotice": "Local test chat. Your current club and role determine access; do not enter real personal, financial or health data.",
+  "clubRoom_club": "General club",
+  "clubRoom_staff": "Staff",
+  "clubRoom_coach": "Coaches",
+  "clubRoom_finance": "Finance",
+  "clubChatLeave": "Leave group",
+  "clubChatArchived": "Archived group — read-only.",
+  "clubChatManage": "Manage custom groups",
+  "clubChatManageNotice": "Only eligible club members can be invited. They must accept before reading or sending messages. Management alone does not grant message access.",
+  "clubChatCategory": "Room category",
+  "clubChatCreate": "Create custom group",
+  "clubChatInvite": "Invite eligible account",
+  "clubChatRemoveMember": "Remove member",
+  "clubChatConfirm": "Confirm this change? Existing access may be revoked.",
+  "clubChatBlockConfirm": "Block this account? Its messages will be hidden, and direct messaging will be restricted.",
+  "clubChatReportNotice": "Reporting shares only the selected message and your reason with authorized moderators, not the rest of the conversation."
 };
 
