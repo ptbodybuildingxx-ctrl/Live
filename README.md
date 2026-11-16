@@ -8,6 +8,8 @@
 
 **Sprint 04 — local personal records:** Train, Nutrition and Health now support opt-in, owner-only test records with CRUD, validation, history and summaries. Records persist in SQLite; users can export or clear their own data. Do not enter real sensitive information; production remains gated pending privacy review. See [Private records](docs/WELLNESS.md).
 
+**Sprint 05 — local coach management:** Verified coaches and members can mutually accept coaching relationships, assign and update personal programs, and track completion. Trainees may separately opt in to sharing workout history and revoke it any time. Other private records remain private. See [Coaching](docs/COACHING.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

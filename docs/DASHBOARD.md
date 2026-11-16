@@ -5,7 +5,7 @@ The local Home screen now includes a dashboard alongside the existing community 
 | Active role | Dashboard |
 |---|---|
 | Member | Personal XP, joined challenges, upcoming own/joined sessions; training, nutrition and health previews in personal context; club identity in club context |
-| Coach | Personal summaries in personal context; program and trainee progress previews; assigned club identity in club context |
+| Coach | Personal summaries in personal context; verified-coach program and consent-based trainee progress shortcuts (Sprint 05); assigned club identity and coaching preview in club context |
 | Club owner | Unique active club account count, pending invitations in that club, role invitations, staff and finance previews |
 | Club manager | Unique active club account count, staff and finance previews |
 | Staff | Assigned club identity only |

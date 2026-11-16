@@ -21,13 +21,16 @@ Home includes a server-projected summary for the active authenticated role and c
 
 ## Sprint 04 — local personal training, nutrition and health records
 
-Owner-authenticated CRUD is available for workout programs and exercise logs, meals/calories and water, daily habits, sleep and body weight. Records persist locally across restarts, with validation and owner-only history, daily summaries, export, deletion and testing opt-in. Club, staff, coach-for-others and administrator contexts cannot read the records. This is a test-data MVP only; real sensitive-data collection and production enablement remain gated. See [Private records](WELLNESS.md).
+Owner-authenticated CRUD is available for workout programs and exercise logs, meals/calories and water, daily habits, sleep and body weight. Records persist locally across restarts, with validation and owner-only history, daily summaries, export, deletion and testing opt-in. Club, staff and administrator contexts cannot read the records. Sprint 05 adds a narrowly consented workout-only coach projection, not full access. This is a test-data MVP only; real sensitive-data collection and production enablement remain gated. See [Private records](WELLNESS.md).
+
+## Sprint 05 — local coach and trainee management
+
+Verified coaches and trainees can establish a mutually approved personal-context coaching relationship. Coaches can create, update and archive assigned programs, with trainees reporting completion. An independent opt-in allows read-only workout history and can be revoked without ending coaching. Ending, blocking or account deletion removes access. Club and platform contexts cannot read coaching data. See [Coaching](COACHING.md).
 
 ## Remaining sprints
 
 | Sprint | Goal | Acceptance gate |
 |---|---|---|
-| 05 | Coach management | Mutually accepted coach/member relation, revocable access, individual programs and progress |
 | 06 | Clubs and finance | Club-scoped members, staff, branches, subscriptions, manual ledger, invoices and audit; no payments |
 | 07 | Community and chat | Club/staff/finance groups with membership enforcement, reporting and blocking |
 | 08 | Live, Ramadan, StartFit, library and rehab | Admin-managed campaigns, group threshold events, rights-cleared library and consent-based rehab |

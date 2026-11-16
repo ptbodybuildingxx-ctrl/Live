@@ -4,7 +4,7 @@ export function dashboardFlags(production, options={}) {
   return {smartDashboard, dashboardMetrics:smartDashboard&&options.dashboardMetrics!==false};
 }
 
-export function dashboardView(s,id,identity,flags) {
+export function dashboardView(s,id,identity,flags,coaching) {
   if(!flags.smartDashboard||!identity?.active)return undefined;
   const {active,permissions,club,roster,invitations,reportList,platformAssignments}=identity;
   const has=p=>permissions.includes(p), metrics=[], actions=[];
@@ -16,8 +16,10 @@ export function dashboardView(s,id,identity,flags) {
     metric('dashboardJoinedChallenges',s.challenges.filter(c=>Object.hasOwn(c.members,id)).length);
     metric('dashboardUpcomingSessions',s.sessions.filter(x=>x.at>Date.now()&&(x.owner===id||x.participants.includes(id))).length);
     link('train','train');link('nutrition','nutrition');link('health','health');
+    if(active.role==='member')link('coachingManagement','coaches');
   }
-  if(has('coach.programs')){link('coachPrograms','coaches',true);link('traineeProgress','coaches',true)}
+  if(has('coach.programs')){const planned=!!active.clubId||s.profiles.find(p=>p.id===id)?.verified!==true;link('coachPrograms','coaches',planned);link('traineeProgress','coaches',planned)}
+  if(coaching)metric('coachingIncoming',coaching.links.filter(l=>l.status==='pending'&&l.incoming).length);
   if(active.clubId&&has('club.read')){
     link('dashboardClubContext','identity');
     if(has('club.roster'))metric('dashboardClubAccounts',new Set(roster.map(g=>g.userId)).size);
