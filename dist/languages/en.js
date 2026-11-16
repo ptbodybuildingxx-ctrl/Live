@@ -1005,6 +1005,27 @@ export default {
   "libraryEmptyDraft": "Draft content is incomplete.",
   "libraryIntro": "A sports book and guide library with organized reading and downloadable files.",
   "libraryNewDraft": "Add book or guide",
-  "libraryNoBooks": "No books or guides in this list yet."
+  "libraryNoBooks": "No books or guides in this list yet.",
+  "campaignIntro": "Explore campaigns, track daily participation and manage challenges.",
+  "campaignCreate": "Create campaign",
+  "campaignEmpty": "No campaigns in this list yet.",
+  "campaignCapacityHint": "Leave empty for the local default maximum of 1,000 participants.",
+  "campaignTasks": "Daily tasks",
+  "campaignTaskHint": "One task per line, up to 12 tasks of 100 characters each. Tasks are optional.",
+  "campaignDays": "days",
+  "campaignMyProgress": "My progress",
+  "campaignCheckins": "daily check-ins",
+  "campaignCheckedIn": "Checked in today",
+  "campaignUndo": "Undo",
+  "campaignRoster": "Participant report",
+  "campaignSignupOpen": "Registration available",
+  "campaignSignupClosed": "Registration unavailable",
+  "campaignCloseSignup": "Close registration",
+  "campaignOpenSignup": "Open registration",
+  "campaignStatus_draft": "Draft",
+  "campaignStatus_archived": "Archived",
+  "campaignStatus_scheduled": "Scheduled",
+  "campaignStatus_active": "Active",
+  "campaignStatus_ended": "Ended"
 };
 

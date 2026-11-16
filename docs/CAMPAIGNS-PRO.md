@@ -1,0 +1,7 @@
+# MUSCLIVO CAMPAIGNS PRO — local prototype
+
+Ramadan and StartFit are independently navigable campaign pages under the campaigns rollout gate. No campaign content is seeded. Platform administrators create campaigns in the chosen language, set dates, optional capacity and optional daily tasks, then publish the draft. Edits return campaigns to draft; signup can be opened or closed independently, and campaigns can be archived.
+
+Authenticated eligible participants can register before the end date when signup is available, leave, check in once per UTC day during the active date range, and mark or unmark configured tasks. The server enforces capacity (default local ceiling 1,000), scope, rollout, task IDs and date constraints. Check-in progress is measured against the full campaign duration, not a medical or fitness score. The participant report is administrator-only; personal task check marks are not exposed to other participants or administrators. Account export includes the user's own enrollment records, and account removal deletes them. Leaving removes the enrollment and its history. Existing campaigns without the new fields remain compatible.
+
+All controls use the existing local server and SQLite state, Arabic/English/Swedish translations, existing disclosure cards, and production gates. No Supabase, paid services, real campaign content, or medical recommendations are included. Release review and full device QA remain separate.

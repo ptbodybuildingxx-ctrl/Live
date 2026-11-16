@@ -1005,6 +1005,27 @@ export default {
   "libraryEmptyDraft": "لم يكتمل محتوى المسودة.",
   "libraryIntro": "مكتبة خاصة بالكتب والأدلة الرياضية مع قراءة منظمة وملفات قابلة للتحميل.",
   "libraryNewDraft": "إضافة كتاب أو دليل",
-  "libraryNoBooks": "لا توجد كتب أو أدلة في هذه القائمة بعد."
+  "libraryNoBooks": "لا توجد كتب أو أدلة في هذه القائمة بعد.",
+  "campaignIntro": "استكشف الحملات وتابع مشاركتك اليومية وأدر التحديات.",
+  "campaignCreate": "إنشاء حملة",
+  "campaignEmpty": "لا توجد حملات في هذه القائمة بعد.",
+  "campaignCapacityHint": "اترك الحقل فارغًا للحد المحلي الافتراضي البالغ 1000 مشارك.",
+  "campaignTasks": "المهام اليومية",
+  "campaignTaskHint": "مهمة في كل سطر، بحد أقصى 12 مهمة و100 حرف لكل مهمة. المهام اختيارية.",
+  "campaignDays": "أيام",
+  "campaignMyProgress": "تقدمي",
+  "campaignCheckins": "تسجيلات يومية",
+  "campaignCheckedIn": "تم تسجيل مشاركتك اليوم",
+  "campaignUndo": "تراجع",
+  "campaignRoster": "تقرير المشاركين",
+  "campaignSignupOpen": "التسجيل متاح",
+  "campaignSignupClosed": "التسجيل غير متاح",
+  "campaignCloseSignup": "إغلاق التسجيل",
+  "campaignOpenSignup": "فتح التسجيل",
+  "campaignStatus_draft": "مسودة",
+  "campaignStatus_archived": "مؤرشفة",
+  "campaignStatus_scheduled": "مجدولة",
+  "campaignStatus_active": "نشطة",
+  "campaignStatus_ended": "منتهية"
 };
 

@@ -1005,6 +1005,27 @@ export default {
   "libraryEmptyDraft": "Innehållsutkastet är inte klart.",
   "libraryIntro": "Ett bibliotek för sportböcker och guider med organiserad läsning och nedladdningsbara filer.",
   "libraryNewDraft": "Lägg till bok eller guide",
-  "libraryNoBooks": "Inga böcker eller guider i listan ännu."
+  "libraryNoBooks": "Inga böcker eller guider i listan ännu.",
+  "campaignIntro": "Utforska kampanjer, följ ditt dagliga deltagande och hantera utmaningar.",
+  "campaignCreate": "Skapa kampanj",
+  "campaignEmpty": "Inga kampanjer i listan ännu.",
+  "campaignCapacityHint": "Lämna tomt för den lokala standardgränsen på 1 000 deltagare.",
+  "campaignTasks": "Dagliga uppgifter",
+  "campaignTaskHint": "En uppgift per rad, högst 12 uppgifter med 100 tecken vardera. Uppgifterna är valfria.",
+  "campaignDays": "dagar",
+  "campaignMyProgress": "Mina framsteg",
+  "campaignCheckins": "dagliga incheckningar",
+  "campaignCheckedIn": "Incheckad idag",
+  "campaignUndo": "Ångra",
+  "campaignRoster": "Deltagarrapport",
+  "campaignSignupOpen": "Anmälan tillgänglig",
+  "campaignSignupClosed": "Anmälan ej tillgänglig",
+  "campaignCloseSignup": "Stäng anmälan",
+  "campaignOpenSignup": "Öppna anmälan",
+  "campaignStatus_draft": "Utkast",
+  "campaignStatus_archived": "Arkiverad",
+  "campaignStatus_scheduled": "Planerad",
+  "campaignStatus_active": "Aktiv",
+  "campaignStatus_ended": "Avslutad"
 };
 

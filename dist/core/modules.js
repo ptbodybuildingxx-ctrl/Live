@@ -10,6 +10,8 @@ export const modules = [
   {id:'finance',icon:'calendar',roles:['gym','admin'],stage:'prototype',items:['income','expenses','invoices','financeReports']},
   {id:'events',icon:'calendar',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['programParticipants']},
   {id:'campaigns',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['ramadan','startfit','campaignAdmin']},
+  {id:'ramadan',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['campaignTasks','campaignMyProgress']},
+  {id:'startfit',icon:'flag',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['campaignTasks','campaignMyProgress']},
   {id:'library',icon:'bookmark',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['books','guides','libraryFavorites','libraryProgress','contentReview']},
   {id:'masterAdmin',icon:'shield',roles:['admin'],stage:'prototype',items:['audit']},
   {id:'about',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['aboutMission','aboutIndependence']}

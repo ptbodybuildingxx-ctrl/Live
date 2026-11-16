@@ -25,13 +25,13 @@ export function toggleCoachLanguage(state,language,currentLanguage){
 }
 export function resetWorkspace(){checked.clear();selections.clear()}
 export function workspacePage({state,id,production,t,h,ic,btn,person,lang}){
-  const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production).filter(m=>state.programs?.flags[m.id]!==false||state.programs?.canAdmin);
+  const effectiveRole=workspaceRole(state),permitted=allowedModules(effectiveRole,production).filter(m=>state.programs?.flags[['ramadan','startfit'].includes(m.id)?'campaigns':m.id]!==false||state.programs?.canAdmin);
   if(id==='workspace')return `<div class="stack"><div class="hero workspace-hero"><span class="eyebrow">MUSCLIVO LIVE / CORE</span><h1>${t('workspace')}</h1><p>${t('workspaceIntro')}</p></div><p class="muted">${h(t('workspaceExpandHint'))}</p><div class="grid workspace-grid">${permitted.map(module=>workspaceCard({module,t,h,ic,btn})).join('')}</div></div>`;
   if(!canOpen(id,effectiveRole,production))return '';
   if(state.training&&id==='trainingPro')return `<div class="stack">${btn(t('workspace'),'nav','data-id="workspace"','chip')}${trainingPage({state,t,h,btn,lang})}</div>`;
   if(state.nutrition&&id==='nutrition')return `<div class="stack">${btn(t('workspace'),'nav','data-id="workspace"','chip')}${nutritionPage({state,t,h,btn,lang})}${!state.nutrition.canAdmin?wellnessPage({state,id,t,h,btn}):''}</div>`;
   if(state.identity&&id==='health')return `<div class="stack">${btn(t('workspace'),'nav','data-id="workspace"','chip')}${wellnessPage({state,id,t,h,btn})}</div>`;
-  if(state.programs&&['events','campaigns','library','rehab','masterAdmin'].includes(id))return `<div class="stack"><div class="row wrap">${btn(t('workspace'),'nav','data-id="workspace"','chip')}</div>${programPage({state,id,t,h,btn})}</div>`;
+  if(state.programs&&['events','campaigns','ramadan','startfit','library','rehab','masterAdmin'].includes(id))return `<div class="stack"><div class="row wrap">${btn(t('workspace'),'nav','data-id="workspace"','chip')}</div>${programPage({state,id,t,h,btn})}</div>`;
   const module=permitted.find(m=>m.id===id);
   if(state.identity&&['clubs','finance'].includes(id))return `<div class="stack"><div class="row wrap">${btn(t('workspace'),'nav','data-id="workspace"','chip')}<span class="badge green">${t('wellnessLocal')}</span></div>${(id==='clubs'?clubPage:financePage)({state,t,h,btn,lang})}</div>`;
   const done=checked.get(sessionKey(state,id))||new Set();

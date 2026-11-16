@@ -27,6 +27,8 @@ file map and guidance on extending modules without duplicating style rules.
 
 **Sprint 15 — editorial instructions:** all 200 built-in exercises now have Arabic, English and Swedish starter technique, common-mistake and safety notes. Related exercise variants use common instruction families; individual stretch entries have their own setup and execution notes. These are administrator-only drafts, not professionally approved instructions. Existing custom catalog records are preserved. See [Training Pro](docs/TRAINING-PRO.md).
 
+**Campaigns Pro:** dedicated Ramadan and StartFit pages, administrator-managed drafts, registration controls, participant limits, optional daily tasks and check-in reports. Campaigns start empty, ready for future content. See [Campaigns Pro](docs/CAMPAIGNS-PRO.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

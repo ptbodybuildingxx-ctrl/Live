@@ -40,7 +40,7 @@ function eventChanges(s,row,before){
   }
 }
 const active=(row)=>row.status==='published'&&row.start<=today()&&row.end>=today();
-function itemBody(module,b){
+function itemBody(module,b,previous){
   const base={title:txt(b.title,100),description:txt(b.description,2000),language:b.language};
   need(['ar','en','sv'].includes(base.language),'Invalid language');
   const start=date(b.start),end=date(b.end);need(start<=end,'Invalid date range');
@@ -50,13 +50,27 @@ function itemBody(module,b){
     return {...base,start,end,time:b.time,location:txt(b.location,160),minimum,capacity};
   }
   need(['ramadan','startfit'].includes(b.category),'Invalid campaign');
-  return {...base,start,end,category:b.category};
+  const capacity=b.campaignCapacity===undefined?(previous?.capacity??null):b.campaignCapacity===null?null:num(b.campaignCapacity,1,1000);
+  const titles=b.campaignTasks;
+  need(titles===undefined||(Array.isArray(titles)&&titles.length<=12),'Invalid campaign tasks');
+  const tasks=titles===undefined?(previous?.tasks||[]):titles.map(title=>{const label=txt(title,100);return (previous?.tasks||[]).find(t=>t.title===label)||{id:randomUUID(),title:label}});
+  need(new Set(tasks.map(t=>t.title)).size===tasks.length,'Duplicate campaign task');
+  return {...base,start,end,category:b.category,capacity,tasks,enrollmentOpen:previous?.enrollmentOpen!==false};
+}
+function campaignFields(row,own,entries){
+  const day=today(),duration=Math.round((Date.parse(row.end)-Date.parse(row.start))/86400000)+1;
+  const days=e=>e.checkins.filter(d=>d>=row.start&&d<=row.end).length;
+  const status=row.status!=='published'?row.status:day<row.start?'scheduled':day>row.end?'ended':'active';
+  return {campaignStatus:status,duration,capacity:row.capacity??null,tasks:row.tasks||[],enrollmentOpen:row.enrollmentOpen!==false,
+    signupAvailable:row.status==='published'&&day<=row.end&&row.enrollmentOpen!==false&&entries.length<(row.capacity??1000),
+    taskChecksToday:(own?.taskChecks||[]).filter(c=>c.date===day).map(c=>c.taskId),checkedInToday:!!own?.checkins.includes(day),
+    progress:own?Math.min(100,Math.round(days(own)/duration*100)):0};
 }
 function publicItem(s,id,row){
   const e=participants(s,row),own=e.find(x=>x.owner===id),m=manage(s,id,row);
   const {createdBy,...fields}=row;
   const event=row.module==='events', seats=event?confirmed(s,row):e;
-  return {...fields,...(row.module==='library'?libraryFields(row):{}),manage:m,count:seats.length,waitCount:event?e.length-seats.length:0,waiting:!!own&&event&&!seats.includes(own),joined:!!own,checkins:own?.checkins||[],eventStatus:event?eventStatus(s,row):undefined,
+  return {...fields,...(row.module==='library'?libraryFields(row):{}),...(row.module==='campaigns'?campaignFields(row,own,e):{}),manage:m,count:seats.length,waitCount:event?e.length-seats.length:0,waiting:!!own&&event&&!seats.includes(own),joined:!!own,checkins:own?.checkins||[],eventStatus:event?eventStatus(s,row):undefined,
     ...(m&&row.module!=='library'?{roster:e.map(x=>({id:x.owner,name:profile(s,x.owner)?.name,checkins:x.checkins.length,attended:!!x.attended,waiting:event&&!seats.includes(x)}))}:{})};
 }
 export function programsView(s,id){
@@ -90,11 +104,14 @@ export function programsAction(s,id,b){
   }
   const r=d.items.find(x=>x.id===b.id&&x.module===module&&scope(s,id,x));need(r,'Content not found',404);
   const before=module==='events'?eventState(s,r):null;
-  if(['update','publish','archive','draft','attendance'].includes(op)){
+  if(['update','publish','archive','draft','attendance','campaignSignup'].includes(op)){
     need(manage(s,id,r),'Management permission required',403);
     if(op==='update'){
-      const body=itemBody(module,b);need(module!=='events'||body.capacity>=confirmed(s,r).length,'Capacity below enrollment');
+      const body=itemBody(module,b,r);need(module!=='events'||body.capacity>=confirmed(s,r).length,'Capacity below enrollment');
+      need(module!=='campaigns'||body.capacity===null||body.capacity>=participants(s,r).length,'Capacity below enrollment');
       Object.assign(r,body,{status:'draft'});
+    }else if(op==='campaignSignup'){
+      need(module==='campaigns'&&typeof b.enabled==='boolean','Invalid campaign signup');r.enrollmentOpen=b.enabled;
     }else if(op==='attendance'){
       need(module==='events'&&typeof b.attended==='boolean'&&eventStatus(s,r)==='confirmed'&&today()>=r.start,'Confirmed event required');
       const e=confirmed(s,r).find(e=>e.owner===b.target);need(e,'Participant not found',404);e.attended=b.attended;
@@ -108,10 +125,18 @@ export function programsAction(s,id,b){
   if(op==='leave'){d.entries=d.entries.filter(x=>x!==e);eventChanges(s,r,before);return}
   if(op==='join'){
     need(today()<=r.end,'Registration closed',409);need(!e,'Already enrolled',409);
-    need(participants(s,r).length<(module==='events'?r.capacity+500:1000),'Enrollment limit',429);
+    need(module!=='campaigns'||r.enrollmentOpen!==false,'Registration closed',409);
+    need(participants(s,r).length<(module==='events'?r.capacity+500:r.capacity??1000),'Enrollment limit',429);
     d.entries.push({itemId:r.id,owner:id,checkins:[],attended:false});eventChanges(s,r,before);return;
   }
   if(op==='checkin'){need(module==='campaigns'&&e&&active(r),'Active campaign enrollment required',403);need(!e.checkins.includes(today()),'Already checked in',409);e.checkins.push(today());return}
+  if(op==='campaignTaskToggle'){
+    need(module==='campaigns'&&e&&active(r),'Active campaign enrollment required',403);
+    need((r.tasks||[]).some(t=>t.id===b.taskId)&&typeof b.completed==='boolean','Invalid campaign task');
+    const checks=e.taskChecks??=[],index=checks.findIndex(c=>c.date===today()&&c.taskId===b.taskId);
+    if(b.completed&&index<0){need(checks.length<10000,'Task record limit',429);checks.push({date:today(),taskId:b.taskId})}
+    if(!b.completed&&index>=0)checks.splice(index,1);return;
+  }
   fail('Unknown operation');
 }
 export function clearRehab(s,id){clearRehabRecords(s.programs,id)}
