@@ -29,4 +29,10 @@
 .training-block[draggable=true]{cursor:grab}
 .training-block[draggable=true]:active{cursor:grabbing}
 .training-live progress{width:100%;accent-color:var(--green)}
+.training-calendar{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,100px),1fr));gap:8px}
+.training-day{display:flex;flex-direction:column;align-items:center;gap:5px;min-height:90px;white-space:normal;text-align:center}
+.training-day.selected{outline:2px solid var(--green);outline-offset:-2px}
+.training-day small,.training-day span{font-size:.8rem}
+.training-live .training-form button,.training-live>button{min-height:48px}
+.training-form option[hidden]{display:none}
 @media(max-width:740px){.training-cards{grid-template-columns:1fr}.training-live .grid3{grid-template-columns:repeat(3,minmax(0,1fr))}}

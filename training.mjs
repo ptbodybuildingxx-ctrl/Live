@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {activeContext,can} from './identity.mjs';
 import {seedExercises,equipment,muscles,patterns,levels,secondaryGroups,alternatives} from './dist/core/exercise-catalog.js';
 import {exerciseDraft} from './exercise-instructions.mjs';
+import {trainingTemplates,templateBlocks,blocksForDay} from './dist/core/training-templates.js';
 
 export const groupTypes=['standard','drop','superset','triset','giant','circuit','restPause','pyramid','cluster','tempo','amrap','custom'];
 const FAIL=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
@@ -77,17 +78,19 @@ function blockBody(s,p,b){
   need(b.items.length>=min&&b.items.length<=max,'Wrong exercise count for method');
   const items=b.items.map(x=>exerciseItem(s,x,type,rounds));
   if(type==='tempo')need(items.every(x=>x.tempo),'Tempo required');
-  return {method:type,name:text(b.name??'',80,type!=='custom'),phase:choice(b.phase,['base','strength','hypertrophy','endurance','deload','custom']),day:number(b.day,1,7,true),weekFrom,weekTo,rounds,items,rest:number(b.rest,0,3600,true),warmup:b.warmup===true};
+  const section=choice(b.section??(b.warmup===true?'warmup':'work'),['warmup','work','cooldown']);
+  return {method:type,name:text(b.name??'',80,type!=='custom'),phase:choice(b.phase,['base','strength','hypertrophy','endurance','deload','custom']),day:number(b.day,1,7,true),weekFrom,weekTo,rounds,items,rest:number(b.rest,0,3600,true),section,warmup:section==='warmup',cooldown:section==='cooldown'};
 }
 function workoutSteps(s,p,week,trainingDay){
-  const rows=p.blocks.filter(b=>b.day===trainingDay&&b.weekFrom<=week&&b.weekTo>=week),available=catalog(s);
+  const order=b=>b.warmup?0:b.cooldown?2:1;
+  const rows=blocksForDay(p.blocks,week,trainingDay).sort((a,b)=>order(a)-order(b)),available=catalog(s);
   const steps=[];
   for(const b of rows)for(let round=1;round<=b.rounds;round++)for(const [itemIndex,item] of b.items.entries()){
     const ex=available.find(r=>r.id===item.exerciseId);need(ex&&!ex.archived,'Program contains unavailable exercise',409);
     const loads=b.method==='drop'?[item.kg,...item.weights]:b.method==='pyramid'?[item.weights[round-1]]:Array(item.segments).fill(item.kg);
     for(const [stage,kg] of loads.entries())for(const side of item.side==='each'?['left','right']:['both']){
       const inter=stage<loads.length-1&&side!=='left';
-      steps.push({blockId:b.id,itemIndex,method:b.method,exerciseId:ex.id,names:ex.names,muscle:ex.muscle,secondary:ex.secondary,pattern:ex.pattern,equipment:ex.equipment,round,stage:stage+1,side,kg,reps:item.reps,duration:item.duration,rpe:item.rpe,rir:item.rir,tempo:item.tempo,warmup:b.warmup,rest:side==='left'?0:inter?item.segmentRest:itemIndex===b.items.length-1?b.rest:item.rest});
+      steps.push({blockId:b.id,itemIndex,method:b.method,exerciseId:ex.id,names:ex.names,muscle:ex.muscle,secondary:ex.secondary,pattern:ex.pattern,equipment:ex.equipment,round,stage:stage+1,side,kg,reps:item.reps,duration:item.duration,rpe:item.rpe,rir:item.rir,tempo:item.tempo,warmup:b.warmup,cooldown:b.cooldown===true,rest:side==='left'?0:inter?item.segmentRest:itemIndex===b.items.length-1?b.rest:item.rest});
     }
   }
   need(steps.length>0&&steps.length<=300,'Workout must contain 1–300 logged steps');return steps;
@@ -97,7 +100,7 @@ function stats(s,id){
   const sessions=view(s).sessions.filter(x=>x.owner===id&&completed(x)).sort((a,b)=>b.endedAt-a.endedAt),exercises={},muscleVolume={};
   let sets=0,volume=0;
   for(const session of sessions)for(const log of session.logs){
-    const step=session.steps[log.index];if(log.skipped||step.warmup)continue;
+    const step=session.steps[log.index];if(log.skipped||step.warmup||step.cooldown)continue;
     const v=Math.round(log.kg*log.reps*100)/100;
     const x=exercises[step.exerciseId]??={id:step.exerciseId,names:step.names,maxKg:0,maxReps:0,volume:0,sets:0,recent:[],recentSessions:[]};
     x.maxKg=Math.max(x.maxKg,log.kg);x.maxReps=Math.max(x.maxReps,log.reps);x.volume+=v;x.sets++;if(x.recent.length<8)x.recent.push({sessionId:session.id,at:session.endedAt,kg:log.kg,reps:log.reps,rir:log.rir});
@@ -119,7 +122,7 @@ function stats(s,id){
 }
 function suggestion(s,id,p,blockId,itemIndex,progress=stats(s,id)){
   const b=p.blocks.find(x=>x.id===blockId),item=b?.items[itemIndex];
-  if(!item||b.warmup||b.method!=='standard'||item.kg<=0)return null;
+  if(!item||b.warmup||b.cooldown||b.method!=='standard'||item.kg<=0)return null;
   const x=progress.exercises.find(r=>r.id===item.exerciseId);
   if(!x)return null;
   const unique=x.recentSessions.slice(0,2);
@@ -157,9 +160,13 @@ export function trainingAction(s,id,b){
   }
   need(own(s,id),'Personal test records required',403);
   if(op==='settings'){need(typeof b.progression==='boolean','Invalid choice');d.settings[id]={progression:b.progression};return}
-  if(op==='planCreate'){
+  if(op==='planCreate'||op==='planCreateTemplate'){
     need(d.plans.filter(p=>p.owner===id).length<100,'Plan limit',429);
-    d.plans.push({id:randomUUID(),owner:id,author:id,linkId:null,...planBody(b),blocks:[],archived:false,revision:1,updatedAt:Date.now(),history:[{revision:1,at:Date.now(),operation:op}]});return;
+    const template=op==='planCreateTemplate'?trainingTemplates.find(t=>t.id===b.templateId):null;
+    if(op==='planCreateTemplate')need(template,'Template not found',404);
+    const p={id:randomUUID(),owner:id,author:id,linkId:null,...planBody(template?{...b,daysPerWeek:template.daysPerWeek}:b),blocks:[],archived:false,revision:1,updatedAt:Date.now(),history:[{revision:1,at:Date.now(),operation:op}]};
+    if(template){p.templateId=template.id;p.blocks=templateBlocks(template,p.weeks).map(b=>({id:randomUUID(),...blockBody(s,p,b)}))}
+    d.plans.push(p);return;
   }
   if(op==='planCopy'||op==='planAssign'){
     const src=d.plans.find(p=>p.id===b.id&&p.owner===id&&!p.archived);need(src,'Plan not found',404);
@@ -168,11 +175,28 @@ export function trainingAction(s,id,b){
     const owner=link?.member||id;need(d.plans.filter(p=>p.owner===owner).length<100,'Plan limit',429);
     d.plans.push({...structuredClone(src),id:randomUUID(),owner,author:id,linkId:link?.id||null,title:op==='planCopy'?src.title.slice(0,94)+' copy':src.title,revision:1,updatedAt:Date.now(),history:[{revision:1,at:Date.now(),operation:op}]});return;
   }
-  if(['planUpdate','planArchive','planRestore','blockAdd','blockUpdate','blockRemove','blockMove','blockMoveTo','progressApply','start'].includes(op)){
+  if(['planUpdate','planArchive','planRestore','blockAdd','blockUpdate','blockRemove','blockMove','blockMoveTo','progressApply','start','dayCopy','weekCopy','dayRest'].includes(op)){
     const p=d.plans.find(r=>r.id===b.id&&mayEdit(s,id,r));need(p,'Plan not found',404);
     const touch=()=>{p.revision++;p.updatedAt=Date.now();p.history=[...(p.history||[]),{revision:p.revision,at:p.updatedAt,operation:op}].slice(-100)};
     if(op==='planArchive'||op==='planRestore'){p.archived=op==='planArchive';touch();return}
     need(!p.archived,'Plan archived',409);
+    if(op==='dayCopy'||op==='weekCopy'){
+      const from=number(b.sourceWeek,1,p.weeks,true),to=number(b.targetWeek,1,p.weeks,true);
+      const sourceDay=op==='dayCopy'?number(b.sourceDay,1,7,true):null,targetDay=op==='dayCopy'?number(b.targetDay,1,7,true):null;
+      const at=(week,day)=>p.blocks.filter(x=>x.weekFrom<=week&&x.weekTo>=week&&(day===null||x.day===day));
+      const src=at(from,sourceDay);need(src.length,'Source schedule is empty',409);need(!at(to,targetDay).length,'Target schedule is not empty',409);
+      need(p.blocks.length+src.length<=60,'Block limit',429);
+      const copies=src.map(x=>({id:randomUUID(),...blockBody(s,p,{...x,day:targetDay??x.day,weekFrom:to,weekTo:to})}));
+      const next={...p,blocks:[...p.blocks,...copies]};
+      for(const day of new Set(copies.map(x=>x.day)))workoutSteps(s,next,to,day);
+      p.blocks=next.blocks;touch();return;
+    }
+    if(op==='dayRest'){
+      need(b.confirm===true,'Confirmation required',403);const week=number(b.week,1,p.weeks,true),day=number(b.day,1,7,true);
+      const affected=new Set(blocksForDay(p.blocks,week,day).map(x=>x.id));if(!affected.size)return;
+      const next=p.blocks.flatMap(x=>!affected.has(x.id)?[x]:[...(x.weekFrom<week?[{...x,weekTo:week-1}]:[]),...(x.weekTo>week?[{...x,id:x.weekFrom<week?randomUUID():x.id,weekFrom:week+1}]:[])]);
+      need(next.length<=60,'Block limit',429);p.blocks=next;touch();return;
+    }
     if(op==='planUpdate'){const next=planBody(b);need(p.blocks.every(x=>x.weekTo<=next.weeks),'Remove incompatible blocks before shortening plan');Object.assign(p,next);touch();return}
     if(op==='blockAdd'){need(p.blocks.length<60,'Block limit',429);p.blocks.push({id:randomUUID(),...blockBody(s,p,b)});touch();return}
     if(op==='start'){

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {seedExercises,equipment,muscles,patterns,levels,alternatives} from '../dist/core/exercise-catalog.js';
 import {exerciseDraft} from '../exercise-instructions.mjs';
-import {trainingPage,trainingUI,trainingPayload,resetTrainingUI} from '../dist/core/training-ui.js';
+import {trainingPage,trainingUI,trainingPayload,resetTrainingUI,updateTrainingPicker,updateTemplateFilter} from '../dist/core/training-ui.js';
 import {groupTypes} from '../training.mjs';
+import {trainingTemplates,calendarDate,blocksForDay} from '../dist/core/training-templates.js';
 import {tr,langs} from '../dist/i18n.js';
 
 const date=new Date().toISOString().slice(0,10);
@@ -179,4 +180,70 @@ test('training UI renders all tabs and multilingual catalog filters; pounds norm
   }
   const payload=trainingPayload({operation:'log',unit:'lb',kg:'22.046226218',reps:'10',duration:'0',index:'1',rpe:'',rir:'2'});
   assert.equal(payload.kg,10);assert.equal(payload.rpe,null);assert.equal(payload.rir,2);
+}));
+
+test('all four editable templates use valid catalog entries and localized labels',async()=>withApp(async({login,enable,train,view,base})=>{
+  const a=await login('athlete'),admin=await login('admin');
+  assert.equal((await train(a,'planCreateTemplate',{...plan,templateId:'home'})).status,403);await enable(a);
+  assert.equal((await train(a,'planCreateTemplate',{...plan,templateId:'unknown'})).status,404);
+  for(const template of trainingTemplates){
+    const result=await train(a,'planCreateTemplate',{...plan,templateId:template.id});assert.equal(result.status,200);
+    const p=result.data.training.plans.at(-1);assert.equal(p.daysPerWeek,template.daysPerWeek);assert.equal(p.templateId,template.id);
+    assert.equal(p.blocks.length,template.days.length*5);assert(p.blocks.every(b=>b.items.every(i=>i.kg===0)));
+    for(const {day} of template.days){const rows=blocksForDay(p.blocks,4,day);assert.equal(rows[0].section,'warmup');assert.equal(rows.at(-1).section,'cooldown')}
+    for(const l of langs)assert.notEqual(tr('train_'+template.id,l),'train_'+template.id);
+  }
+  await train(admin,'catalogArchive',{id:'march-in-place'});assert.equal((await train(a,'planCreateTemplate',{...plan,templateId:'home'})).status,404);assert.equal((await view(a)).data.training.plans.length,4);
+  assert.equal((await fetch(base+'/core/training-templates.js')).status,200);
+}));
+
+test('calendar copy and rest edits are atomic, scoped and independently editable',async()=>withApp(async({login,enable,train,view})=>{
+  const [a,s]=await Promise.all(['athlete','sara'].map(login));await enable(a);await enable(s);
+  const id=(await train(a,'planCreate',plan)).data.training.plans[0].id;
+  const added=await train(a,'blockAdd',{id,...block('standard',[ex('db-bench')],{weekTo:3})});const source=added.data.training.plans[0].blocks[0];
+  const copy={id,sourceWeek:1,sourceDay:1,targetWeek:1,targetDay:2};
+  assert.equal((await train(s,'dayCopy',copy)).status,404);
+  let res=await train(a,'dayCopy',copy);assert.equal(res.status,200);const copied=res.data.training.plans[0].blocks[1];assert.notEqual(copied.id,source.id);assert.equal(copied.weekTo,1);assert.equal(copied.day,2);
+  assert.equal((await train(a,'dayCopy',copy)).status,409);assert.equal((await train(a,'weekCopy',{id,sourceWeek:1,targetWeek:2})).status,409);
+  res=await train(a,'weekCopy',{id,sourceWeek:1,targetWeek:4});assert.equal(res.status,200);assert.equal(res.data.training.plans[0].blocks.filter(b=>b.weekFrom===4).length,2);
+  assert.equal((await train(a,'dayRest',{id,week:2,day:1})).status,403);
+  const session=(await train(a,'start',{id,week:2,day:1})).data.training.sessions[0];
+  res=await train(a,'dayRest',{id,week:2,day:1,confirm:true});assert.equal(res.status,200);const p=res.data.training.plans[0];
+  assert.equal(blocksForDay(p.blocks,2,1).length,0);assert.equal(blocksForDay(p.blocks,1,1).length,1);assert.equal(blocksForDay(p.blocks,3,1).length,1);assert.equal(blocksForDay(p.blocks,4,1).length,1);
+  assert.deepEqual(res.data.training.sessions[0],session);assert.equal(new Set(p.blocks.map(b=>b.id)).size,p.blocks.length);
+  assert.equal(calendarDate('2024-02-26',1,4),'2024-02-29');assert.equal(calendarDate('2025-12-29',2,1),'2026-01-05');
+}));
+
+test('template session orders warm-up, work, cool-down and excludes non-work from strength progress',async()=>withApp(async({login,enable,train})=>{
+  const a=await login('athlete');await enable(a);const id=(await train(a,'planCreateTemplate',{...plan,templateId:'home'})).data.training.plans[0].id;
+  const start=await train(a,'start',{id,week:1,day:1});assert.equal(start.status,200);const session=start.data.training.sessions[0];assert(session.steps[0].warmup);assert(session.steps.at(-1).cooldown);
+  for(const [index,step] of session.steps.entries())assert.equal((await train(a,'log',{sessionId:session.id,index,kg:0,reps:step.reps,duration:step.duration})).status,200);
+  const end=await train(a,'finish',{sessionId:session.id});assert.equal(end.status,200);assert.equal(end.data.training.progress.sets,6);assert(!end.data.training.progress.exercises.some(x=>['march-in-place','child-pose'].includes(x.id)));
+}));
+
+test('weekly builder UI renders calendar, templates, eight exercise pickers and localized actions',async()=>withApp(async({login,enable,train})=>{
+  const a=await login('athlete');await enable(a);const state=(await train(a,'planCreateTemplate',{...plan,templateId:'home'})).data;
+  for(const l of langs){resetTrainingUI();trainingUI(state.me.id,'plan',state.training.plans[0].id);trainingUI(state.me.id,'week','1');trainingUI(state.me.id,'day','2');trainingUI(state.me.id,'block','new');const html=trainingPage({state,t:k=>tr(k,l),h:v=>String(v??''),btn:(x,a,attrs)=>`<button data-action="${a}" ${attrs}>${x}</button>`,lang:l});assert.equal((html.match(/data-exercise-picker/g)||[]).length,8);assert.equal((html.match(/class="secondary training-day/g)||[]).length,7);assert(html.includes('name="weekFrom" type="number" value="2"'));assert(html.includes('name="day" type="number" value="2"'));assert(html.includes(tr('train_copyWeek',l)));assert(!/\btrain_(calendar|templates|copyDay|pickExercise|section|restDay|remaining|work)\b/.test(html))}
+  assert.deepEqual(trainingPayload({operation:'dayCopy',sourceWeek:'1',sourceDay:'2',targetWeek:'3',targetDay:'4'}),{operation:'dayCopy',sourceWeek:1,sourceDay:2,targetWeek:3,targetDay:4});
+}));
+
+test('exercise picker filters across languages without clearing an existing selection',()=>{
+  const option=(value,query,equipment,muscle,level,selected=false)=>({value,selected,dataset:{query,equipment,muscle,level},hidden:false,disabled:false});
+  const keep=option('db-bench','bench press ضغط hantelpress','dumbbell','chest','intermediate',true),show=option('push-up','push-up ضغط armhävning','bodyweight','chest','beginner'),hide=option('body-squat','squat قرفصاء knäböj','bodyweight','legs','beginner');
+  const output={textContent:''},form={elements:{pickerQuery:{value:'ضغط'},pickerEquipment:{value:'bodyweight'},pickerMuscle:{value:'chest'},pickerLevel:{value:'beginner'}},querySelector:s=>s==='[data-picker-count]'?output:{},querySelectorAll:()=>[{options:[{value:''},keep,show,hide]}]};
+  updateTrainingPicker(form);assert.equal(output.textContent,'1');assert(!keep.hidden&&!keep.disabled);assert(!show.hidden&&!show.disabled);assert(hide.hidden&&hide.disabled);
+  form.elements.pickerQuery.value='';form.elements.pickerMuscle.value='';updateTrainingPicker(form);assert.equal(output.textContent,'2');assert(!hide.hidden);
+  const rows=trainingTemplates.map(t=>({dataset:{goal:t.goal,level:t.level},hidden:false}));updateTemplateFilter({querySelector:s=>({value:s.includes('Goal')?'strength':'intermediate'}),querySelectorAll:()=>rows});assert.equal(rows.filter(r=>!r.hidden).length,1);
+});
+
+test('coach can customize an assigned template calendar only while the relationship is active',async()=>withApp(async({login,enable,train,act,change,view})=>{
+  const [c,a]=await Promise.all(['coach','athlete'].map(login));await change(c,'personal:coach');await enable(c);await enable(a);
+  const id=(await train(c,'planCreateTemplate',{...plan,templateId:'home'})).data.training.plans[0].id;
+  const linkId=(await act(c,'coaching',{operation:'invite',target:'demo-athlete'})).data.coaching.links[0].id;await act(a,'coaching',{operation:'respond',linkId,accept:true});
+  assert.equal((await train(c,'planAssign',{id,linkId})).status,200);const assigned=(await view(a)).data.training.plans[0].id;
+  assert.equal((await train(c,'dayCopy',{id:assigned,sourceWeek:1,sourceDay:1,targetWeek:1,targetDay:2})).status,200);
+  assert.equal((await train(c,'dayRest',{id:assigned,week:2,day:1,confirm:true})).status,200);
+  assert.equal(blocksForDay((await view(c)).data.training.plans.find(p=>p.id===id).blocks,2,1).length,5);
+  assert.equal(blocksForDay((await view(a)).data.training.plans[0].blocks,2,1).length,0);
+  await act(a,'coaching',{operation:'end',linkId});assert.equal((await train(c,'dayRest',{id:assigned,week:3,day:1,confirm:true})).status,404);
 }));

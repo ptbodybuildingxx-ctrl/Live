@@ -9,7 +9,8 @@ import {coachingProgramForm} from './core/coaching-ui.js';
 import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
 import {programPayload,programFilter} from './core/programs-ui.js';
-import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer} from './core/training-ui.js';
+import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer,updateTrainingPicker,updateTemplateFilter,rememberTrainingDraft,clearTrainingDraft} from './core/training-ui.js';
+import {nutritionUI,nutritionPayload,resetNutritionUI,updateNutritionPicker,showEnergyEstimate,fillSmartTargets} from './core/nutrition-ui.js';
 import {bindDrawingPreviews} from './core/xdraw-ui.js';
 bindDrawingPreviews(document);
 const $=s=>document.querySelector(s);
@@ -98,11 +99,17 @@ const form=(type,inner,label='save')=>`<form class="form" data-form="${type}">${
 const imageField=()=>`<label>${t('image')}<input type="file" name="image" accept="image/png,image/jpeg,image/webp"></label>`;
 async function imageData(file){if(!file?.size)return '';if(file.size>12*1024*1024)throw new Error(t('imageLarge'));const src=URL.createObjectURL(file);try{const im=new Image();im.src=src;await im.decode();const canvas=document.createElement('canvas'),ratio=Math.min(1,900/Math.max(im.width,im.height));canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.72);if(data.length>=400000)data=canvas.toDataURL('image/jpeg',.4);if(data.length>=400000)throw new Error(t('imageLarge'));return data}finally{URL.revokeObjectURL(src)}}
 async function act(type,b={}){if(busy)return;busy=true;const revision=++stateRevision;try{const next=await api('action',{type,...b});if(revision!==stateRevision)return false;state=next;render();return true}catch(e){toast(e.message||t('error'));return false}finally{busy=false}}
-async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();resetTrainingUI();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'&&!state.dashboard?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
+async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();resetTrainingUI();resetNutritionUI();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'&&!state.dashboard?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
+    case 'nutritionCalculate':if(state?.nutrition&&!config.production)fillSmartTargets(el.closest('form'),t);break;
     case 'trainingUI':if(state?.training&&!config.production){trainingUI(state.me.id,op,id);render()}break;
+    case 'nutritionUI':if(state?.nutrition&&!config.production){nutritionUI(state.me.id,op,id);render()}break;
+    case 'nutritionAction':if(state?.nutrition&&!config.production){
+      if(['foodArchive','planDelete','logDelete','waterDelete','recipeDelete','planItemDelete','share'].includes(op)&&!confirm(t('train_confirm')))break;
+      await act('nutrition',{operation:op,id,foodId:id,linkId:id,itemId:el.dataset.item,date:el.dataset.date,enabled:el.dataset.enabled==='true'});
+    }break;
     case 'trainingAction':if(state?.training&&!config.production){
       const confirmOps=['catalogArchive','planArchive','blockRemove','cancel','sessionDelete','progressApply','contentReturn'];
       if(confirmOps.includes(op)&&!confirm(t('train_confirm')))break;
@@ -149,7 +156,7 @@ document.addEventListener('click',async e=>{
     case 'authMode':authEmail=$('input[name=email]')?.value||authEmail;authMode=id;render();break;
     case 'resend':await sign({mode:'resend',email:$('input[name=email]')?.value||authEmail,lang});break;
     case 'demo':await sign({mode:'demo',role:id,lang});break;
-    case 'logout':resetTrainingUI();++stateRevision;await api('logout',{});state=null;page='home';chatId=null;chatMode='personal';clubChatId=null;render();break;
+    case 'logout':resetTrainingUI();resetNutritionUI();++stateRevision;await api('logout',{});state=null;page='home';chatId=null;chatMode='personal';clubChatId=null;render();break;
     case 'feed':feed=id;render();break;
     case 'liveTab':liveTab=id;render();break;
     case 'setReady':await act('status',{status:'ready'});break;
@@ -180,7 +187,12 @@ document.addEventListener('click',async e=>{
     case 'close':closeModal();break;
   }
 });
+document.addEventListener('input',e=>{rememberTrainingDraft(state?.me?.id,e.target.closest('form'));if(e.target.closest('[data-picker-filters]'))updateTrainingPicker(e.target.closest('form'));if(state?.nutrition&&e.target.closest('[data-food-picker]'))updateNutritionPicker(e.target.closest('[data-food-picker]'),state.nutrition,t)});
 document.addEventListener('change',async e=>{
+  rememberTrainingDraft(state?.me?.id,e.target.closest('form'));
+  if(state?.nutrition&&e.target.closest('[data-food-picker]'))updateNutritionPicker(e.target.closest('[data-food-picker]'),state.nutrition,t);
+  if(e.target.matches('[name=templateGoal],[name=templateLevel]'))updateTemplateFilter(e.target.closest('[data-template-panel]'));
+  if(e.target.closest('[data-picker-filters]')||e.target.matches('[data-exercise-picker]'))updateTrainingPicker(e.target.closest('form'));
   if(e.target.id==='lang-select'){lang=e.target.value;localStorage.setItem('ml-language',lang);if(state)await act('settings',{lang});else render()}
   if(e.target.id==='dashboard-compact'&&state.dashboard&&!config.production){setDashboardCompact(state,localStorage,e.target.checked);return}
   if(e.target.id==='presence')await act('status',{status:e.target.value});
@@ -189,6 +201,24 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='nutritionEstimate'){showEnergyEstimate(f,data,t);return}
+  if(['nutritionFilter','nutritionViewDate','nutritionDay'].includes(type)){
+    if(state?.nutrition&&!config.production){
+      if(type==='nutritionFilter')nutritionUI(state.me.id,'filter',{query:String(data.query||'').slice(0,120),cuisine:data.cuisine,group:data.group,ready:fd.has('ready'),onlyFavorites:fd.has('onlyFavorites')});
+      if(type==='nutritionViewDate')nutritionUI(state.me.id,'date',data.date);
+      if(type==='nutritionDay')nutritionUI(state.me.id,'day',data.day);render();
+    }return;
+  }
+  if(type==='nutrition'){
+    if(!state?.nutrition||config.production)return;
+    if(['planAssign','recipeShare'].includes(data.operation)&&!confirm(t('train_assignConfirm')))return;
+    if(['planItemSwap','planMealSwap'].includes(data.operation)&&!confirm(t('nut_confirmSwap')))return;
+    if(await act('nutrition',nutritionPayload(data))){
+      if(['foodCreate','foodUpdate'].includes(data.operation))nutritionUI(state.me.id,'food','');
+      if(['planCreate','planTemplate'].includes(data.operation))nutritionUI(state.me.id,'plan',state.nutrition.plans.at(-1)?.id);
+      render();
+    }return;
+  }
   if(type==='trainingFilter'){if(state?.training&&!config.production){trainingUI(state.me.id,'filter',{query:String(data.query||'').slice(0,100),equipment:fd.getAll('equipment'),muscle:data.muscle,level:data.level,secondary:data.secondary});render()}return}
   if(type==='trainingMedia'){
     if(busy||config.production||!state?.training?.canAdmin)return;
@@ -200,8 +230,9 @@ document.addEventListener('submit',async e=>{
   if(type==='training'){
     if(!state?.training||config.production)return;
     const op=data.operation;if(op==='planAssign'&&!confirm(t('train_assignConfirm')))return;
+    if(op==='dayRest'){if(!confirm(t('train_restConfirm')))return;data.confirm=true}
     const ok=await act('training',trainingPayload({...data,secondary:fd.getAll('target')}));
-    if(ok){if(op==='start')trainingUI(state.me.id,'tab','live');else if(op==='finish')trainingUI(state.me.id,'tab','progress');else if(op==='planCreate')trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);else if(['blockAdd','blockUpdate'].includes(op))trainingUI(state.me.id,'block','');else if(['catalogCreate','catalogUpdate'].includes(op))trainingUI(state.me.id,'edit','');render()}return;
+    if(ok){if(op==='planCreate')clearTrainingDraft(state.me.id);if(op==='start')trainingUI(state.me.id,'tab','live');else if(op==='finish')trainingUI(state.me.id,'tab','progress');else if(['planCreate','planCreateTemplate'].includes(op))trainingUI(state.me.id,'plan',state.training.plans.at(-1)?.id);else if(['blockAdd','blockUpdate','dayRest'].includes(op))trainingUI(state.me.id,'block','');else if(['catalogCreate','catalogUpdate'].includes(op))trainingUI(state.me.id,'edit','');render()}return;
   }
   if(type==='programFilter'){if(state&&!config.production){programFilter(state.me.id,data);render()}return}
   if(type==='programs'){if(!config.production&&state.programs&&(!(data.operation==='share'&&data.linkId!=='none')||confirm(t('programShareConfirm'))))await act('programs',programPayload(data));return}
@@ -234,5 +265,5 @@ document.addEventListener('dragend',()=>{trainingDrag=null});
 setInterval(()=>{if(state&&page==='trainingPro')updateTrainingTimer()},1000);
 async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'&&!state.dashboard?'admin':'home'}catch{}render()}
 init();
-setInterval(async()=>{if(!state||busy||(page==='trainingPro'&&document.querySelector('.training-form details[open],.main-content details[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
+setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
 
