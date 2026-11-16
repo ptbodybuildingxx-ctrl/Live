@@ -15,11 +15,14 @@ Standalone project. No Supabase connection, external service, paid dependency or
 
 The existing accounts now support nine role types, accepted and revocable assignments, club-specific authorization, a role-switching UI, and isolated local demo clubs. See [Identity model](IDENTITY.md). Production still blocks these new local features pending release review.
 
+## Sprint 03 — local smart dashboard and settings
+
+Home includes a server-projected summary for the active authenticated role and club. All nine roles receive permission-specific shortcuts; only authorized club roster counts, club invitation counts and platform moderation counts are calculated. No fabricated finance, training, member-progress or health records are shown. Planned shortcuts remain previews. See [Dashboard](DASHBOARD.md).
+
 ## Remaining sprints
 
 | Sprint | Goal | Acceptance gate |
 |---|---|---|
-| 03 | Smart dashboard and settings | Role-specific summaries, feature flags, isolated context switching, accessible translations |
 | 04 | Train, nutrition and health | Owner-authenticated CRUD, validation, history, safe handling of sensitive data |
 | 05 | Coach management | Mutually accepted coach/member relation, revocable access, individual programs and progress |
 | 06 | Clubs and finance | Club-scoped members, staff, branches, subscriptions, manual ledger, invoices and audit; no payments |

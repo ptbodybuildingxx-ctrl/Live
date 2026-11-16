@@ -6,6 +6,7 @@ import { dirname, resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readReleaseConfig } from './release.mjs';
 import {ensureIdentity,identityView,identityAction,identityExport,removeIdentity} from './identity.mjs';
+import {dashboardFlags,dashboardView} from './dashboard.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const uuid = randomUUID;
@@ -60,12 +61,14 @@ function visible(s,owner,viewer,kind){
 const notify=(s,owner,text,actor)=>{if(owner!==actor&&profile(s,owner)?.privacy.notifications)s.notifications.unshift({id:uuid(),owner,text,actor,at:now(),read:false})};
 const safeProfile=(s,p,viewer)=>{const {email,privacy,emailVerified,policyVersion,policyAcceptedAt,...v}=p;return {...v,lastActive:undefined,status:p.id===viewer||(p.privacy.presence&&p.lastActive>now()-30*60000)?p.status:'offline',matchable:p.privacy.match&&p.privacy.presence,privacy:p.id===viewer?privacy:undefined,emailVerified:p.id===viewer?emailVerified:undefined}};
 const media=(x)=>{const m=String(x||'');assert(!m||(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(m)&&m.length<400000),'Image too large or invalid',400);return m};
-function snapshot(s,id){
+function snapshot(s,id,flags){
+  const identity=identityView(s,id);
   const me=profile(s,id);
   const profiles=s.profiles.filter(p=>p.role!=='admin'&&visible(s,p.id,id,'profile')).map(p=>safeProfile(s,p,id));
   const posts=s.posts.filter(p=>visible(s,p.owner,id,'posts')).slice(0,50).map(p=>({...p,comments:p.comments.filter(c=>!blocked(s,c.owner,id)).slice(-100)}));
   return {me:{...safeProfile(s,me,id),email:me.email},profiles,posts,
-    ...(s.identity?{identity:identityView(s,id)}:{}),
+    ...(identity?{identity}:{}),
+    ...(flags.smartDashboard&&identity?.active?{dashboard:dashboardView(s,id,identity,flags)}:{}),
     stories:s.stories.filter(x=>x.at>now()-DAY&&visible(s,x.owner,id,'stories')),
     follows:s.follows.filter(x=>x.from===id||x.to===id),saved:s.saved.filter(x=>x.owner===id),
     blocks:s.blocks.filter(x=>x.from===id),requests:s.requests.filter(x=>x.from===id||x.to===id).slice(0,100),
@@ -179,8 +182,9 @@ function removeAccount(s,id){
   s.verifications=s.verifications.filter(x=>x.owner!==id);
   s.reports=s.reports.filter(x=>x.by!==id&&x.target!==id&&!owned.has(x.target));
 }
-export function createApp({dbPath,release={production:false}}={}){
+export function createApp({dbPath,release={production:false},features={smartDashboard:process.env.ML_SMART_DASHBOARD!=='0',dashboardMetrics:process.env.ML_DASHBOARD_METRICS!=='0'}}={}){
   const production=release.production===true;
+  const flags=dashboardFlags(production,features);
   dbPath??=resolve(root,production?'data/production.sqlite':'data/local.sqlite');
   if(production&&(!release.origin?.startsWith('https://')||typeof release.mailer!=='function'||!emailValid(release.adminEmail||'')||typeof release.adminPassword!=='string'||release.adminPassword.length<16||!emailValid(release.contact||'')))throw new Error('Release blocked: incomplete configuration');
   if(dbPath!==':memory:')mkdirSync(dirname(dbPath),{recursive:true,mode:0o700});
@@ -229,7 +233,7 @@ export function createApp({dbPath,release={production:false}}={}){
         const ip=req.socket.remoteAddress||'unknown';
         rate('ip:'+ip,production?1500:3000,60000);
         if(req.method==='POST'){assert(production?req.headers.origin===release.origin:(!req.headers.origin||req.headers.origin===`http://${req.headers.host}`),'Invalid origin');assert((req.headers['content-type']||'').includes('application/json'),'JSON required',415)}
-        if(url.pathname==='/api/config'&&req.method==='GET')return json(res,{production,demo:!production,policyVersion:POLICY_VERSION,contact:production?release.contact:null});
+        if(url.pathname==='/api/config'&&req.method==='GET')return json(res,{production,demo:!production,policyVersion:POLICY_VERSION,contact:production?release.contact:null,features:flags});
         if(url.pathname==='/api/health'&&req.method==='GET')return json(res,{ok:true});
         const id=session(req);
         if(url.pathname==='/api/auth'&&req.method==='POST'){
@@ -262,12 +266,12 @@ export function createApp({dbPath,release={production:false}}={}){
           }else{
             assert(b.mode==='login','Unknown authentication action',400);const a=db.prepare('SELECT * FROM accounts WHERE email=?').get(email);assert(checkPassword(a,password),'Invalid credentials',401);uid=a.id;const p=profile(read(),uid);assert(!p.suspended,'Account suspended');assert(!production||p.emailVerified===true,'Email verification required',403);
           }
-          revoke(req);signIn(res,uid);const s=read();profile(s,uid).lastActive=now();save(s);return json(res,snapshot(s,uid));
+          revoke(req);signIn(res,uid);const s=read();profile(s,uid).lastActive=now();save(s);return json(res,snapshot(s,uid,flags));
         }
         if(url.pathname==='/api/logout'&&req.method==='POST'){revoke(req);clearCookie(res);return json(res,{ok:true});}
         const s=read(),me=profile(s,id);assert(id&&me&&!me.suspended&&(!production||me.emailVerified===true),'Sign in required',401);
         rate('user:'+id,production?120:500,60000);
-        if(url.pathname==='/api/state'&&req.method==='GET'){if(me.lastActive<now()-60000){me.lastActive=now();s.stories=s.stories.filter(x=>x.at>now()-DAY);save(s)}return json(res,snapshot(s,id));}
+        if(url.pathname==='/api/state'&&req.method==='GET'){if(me.lastActive<now()-60000){me.lastActive=now();s.stories=s.stories.filter(x=>x.at>now()-DAY);save(s)}return json(res,snapshot(s,id,flags));}
         if(url.pathname==='/api/account'&&req.method==='POST'){
           rate('account:'+id,8,600000);
           const b=await parse(req),fresh=read(),p=profile(fresh,id);assert(p&&!p.suspended);const account=db.prepare('SELECT * FROM accounts WHERE id=?').get(id),pass=String(b.password||'');assert(pass.length<=128&&checkPassword(account,pass),'Invalid credentials',401);
@@ -281,11 +285,11 @@ export function createApp({dbPath,release={production:false}}={}){
           rate('action:'+id+':'+b.type,production?35:150,60000);
           if(production&&(b.type==='post'||b.type==='story')&&b.image){const used=[...fresh.posts,...fresh.stories].filter(p=>p.owner===id).reduce((a,p)=>a+Buffer.byteLength(p.image||''),0);assert(used+Buffer.byteLength(String(b.image))<=1500000,'Personal media quota reached',429)}
           action(fresh,id,b);if(b.type==='admin'&&b.operation==='suspend'&&profile(fresh,b.id)?.suspended)db.prepare('DELETE FROM sessions WHERE user_id=?').run(b.id);
-          save(fresh);return json(res,snapshot(fresh,id));
+          save(fresh);return json(res,snapshot(fresh,id,flags));
         }
         return json(res,{error:'Not found'},404);
       }
-      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
+      const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
       const file=names[url.pathname];if(!file){res.writeHead(404);return res.end('Not found')}
       const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
       res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));

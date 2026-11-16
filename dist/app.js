@@ -2,8 +2,10 @@ import {tr,langs} from './i18n.js';
 import {modules,canOpen} from './core/modules.js';
 import {workspacePage,toggleSample,toggleCoachLanguage,resetWorkspace} from './core/workspace.js';
 import {identityPage,workspaceRole} from './core/identity-ui.js';
+import {dashboardPage,dashboardSettings,dashboardCompact,setDashboardCompact} from './core/dashboard.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
+let stateRevision=0;
 if(!langs.includes(lang))lang='ar';
 const t=k=>tr(config.production?({local:'publicPilot',localNote:'publicNote',adminNotice:'publicAdminNotice'}[k]||k):k,lang);
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -43,6 +45,8 @@ function render(){
   if(['home','workspace','profile'].includes(page)&&state.identity&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',`<section class="card row wrap workspace-entry"><div class="grow"><h3>${t('identity')}</h3><small>${t('identity_'+state.identity.active.role)} · ${h(state.identity.club?.name||t('identityPersonal'))}</small></div>${btn(t('identitySwitchLabel'),'nav','data-id="identity"','secondary','shield')}</section>`);
   if(page==='home'&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',`<section class="card row wrap workspace-entry"><div class="grow"><h3>${t('workspace')}</h3><small>${t('workspaceIntro')}</small></div>${btn(t('seeAll'),'nav','data-id="workspace"','primary','dumbbell')}</section>`);
   if(page==='settings')$('.main-content').insertAdjacentHTML('beforeend',`<section class="card stack account-panel"><h2>${t('privacy')}</h2>${btn(t('dataExport'),'account','data-id="dataExport"','secondary')}${btn(t('logoutAll'),'account','data-id="logoutAll"','secondary')}${state.me.role!=='admin'?btn(t('deleteAccount'),'account','data-id="deleteAccount"','danger'):''}<div class="row wrap"><a href="/privacy?lang=${lang}">${t('privacyPolicy')}</a><a href="/terms?lang=${lang}">${t('terms')}</a></div></section>`);
+  if(page==='home'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',dashboardPage({state,production:config.production,t,h,btn,compact:dashboardCompact(state,localStorage)}));
+  if(page==='settings'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('beforeend',dashboardSettings({state,production:config.production,t,compact:dashboardCompact(state,localStorage)}));
   document.querySelectorAll('[data-action=follow]').forEach(el=>{if((state.followRequests||[]).some(r=>r.from===state.me.id&&r.to===el.dataset.id))el.textContent=t('cancelRequest')});
   const m=$('.messages');if(m)m.scrollTop=m.scrollHeight;
 }
@@ -82,8 +86,8 @@ const field=(name,label,value='',type='text',required=false)=>`<label>${t(label)
 const form=(type,inner,label='save')=>`<form class="form" data-form="${type}">${inner}<button type="submit" class="primary">${t(label)}</button></form>`;
 const imageField=()=>`<label>${t('image')}<input type="file" name="image" accept="image/png,image/jpeg,image/webp"></label>`;
 async function imageData(file){if(!file?.size)return '';if(file.size>12*1024*1024)throw new Error(t('imageLarge'));const src=URL.createObjectURL(file);try{const im=new Image();im.src=src;await im.decode();const canvas=document.createElement('canvas'),ratio=Math.min(1,900/Math.max(im.width,im.height));canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);let data=canvas.toDataURL('image/jpeg',.72);if(data.length>=400000)data=canvas.toDataURL('image/jpeg',.4);if(data.length>=400000)throw new Error(t('imageLarge'));return data}finally{URL.revokeObjectURL(src)}}
-async function act(type,b={}){if(busy)return;busy=true;try{state=await api('action',{type,...b});render();return true}catch(e){toast(e.message||t('error'));return false}finally{busy=false}}
-async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
+async function act(type,b={}){if(busy)return;busy=true;const revision=++stateRevision;try{const next=await api('action',{type,...b});if(revision!==stateRevision)return false;state=next;render();return true}catch(e){toast(e.message||t('error'));return false}finally{busy=false}}
+async function sign(b){if(busy)return;busy=true;try{const result=await api('auth',b);authEmail=b.email||'';if(result.verificationRequired){authMode='verify';render();toast(t('codeSent'));return}if(result.ok&&!result.me){authMode=b.mode==='forgot'?'reset':b.mode==='resend'?'verify':'login';render();toast(t(b.mode==='forgot'||b.mode==='resend'?'codeSent':'success'));return}resetWorkspace();state=result;lang=b.lang||state.me.lang||lang;localStorage.setItem('ml-language',lang);page=state.me.role==='admin'&&!state.dashboard?'admin':'home';render()}catch(e){toast(e.message)}finally{busy=false}}
 document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
@@ -100,7 +104,7 @@ document.addEventListener('click',async e=>{
     case 'authMode':authEmail=$('input[name=email]')?.value||authEmail;authMode=id;render();break;
     case 'resend':await sign({mode:'resend',email:$('input[name=email]')?.value||authEmail,lang});break;
     case 'demo':await sign({mode:'demo',role:id,lang});break;
-    case 'logout':await api('logout',{});state=null;page='home';chatId=null;render();break;
+    case 'logout':++stateRevision;await api('logout',{});state=null;page='home';chatId=null;render();break;
     case 'feed':feed=id;render();break;
     case 'liveTab':liveTab=id;render();break;
     case 'setReady':await act('status',{status:'ready'});break;
@@ -133,6 +137,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('change',async e=>{
   if(e.target.id==='lang-select'){lang=e.target.value;localStorage.setItem('ml-language',lang);if(state)await act('settings',{lang});else render()}
+  if(e.target.id==='dashboard-compact'&&state.dashboard&&!config.production){setDashboardCompact(state,localStorage,e.target.checked);return}
   if(e.target.id==='presence')await act('status',{status:e.target.value});
 });
 document.addEventListener('submit',async e=>{
@@ -154,7 +159,7 @@ document.addEventListener('submit',async e=>{
   }catch(err){toast(err.message||t('error'))}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'?'admin':'home'}catch{}render()}
+async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'&&!state.dashboard?'admin':'home'}catch{}render()}
 init();
-setInterval(async()=>{if(!state||busy||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;try{state=await api('state');render()}catch(e){if(e.status===401){state=null;render()}}},15000);
+setInterval(async()=>{if(!state||busy||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
 

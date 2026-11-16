@@ -4,6 +4,8 @@
 
 **Sprint 02 — local identity and access:** select Identity & access from the dashboard or workspace. One authenticated account can switch between personal, club and permitted platform roles. Club owners can invite staff, managers, coaches, accountants or members; recipients must accept. The server checks active role and club scope for each operation. The two demo clubs illustrate isolation. The legacy social-profile role remains intact. This identity module stays local-only until production security review. See [Identity model](docs/IDENTITY.md).
 
+**Sprint 03 — local smart dashboard:** Home displays role-specific summaries and shortcuts for the active personal, club or platform context. Settings offer a compact dashboard view per context, and local feature flags can disable the panel or its metrics. Production remains gated. See [Dashboard](docs/DASHBOARD.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

@@ -12,7 +12,7 @@ test('production preflight remains closed without real configuration',()=>{
 test('offline production simulation: no demos, verified email, secure sessions, privacy and deletion',async()=>{
   const outbox=[];
   const release={production:true,origin:'https://live.example.test',adminEmail:'owner@example.test',adminPassword:'TestOnlyAdminPassword-2026',contact:'support@example.test',maxUsers:20,mailer:async m=>outbox.push(m)};
-  const {server,db}=createApp({dbPath:':memory:',release});
+  const {server,db}=createApp({dbPath:':memory:',release,features:{smartDashboard:true,dashboardMetrics:true}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const url='http://127.0.0.1:'+server.address().port;
   const request=async(path,body,cookie='',origin=release.origin)=>{
@@ -25,13 +25,13 @@ test('offline production simulation: no demos, verified email, secure sessions, 
   const verify=async(email)=>auth({mode:'verify',email,code:outbox.findLast(x=>x.to===email&&x.purpose==='verify').code});
   const login=(email,password='A-long-test-password!')=>auth({mode:'login',email,password});
   try{
-    const config=await request('/api/config');assert.equal(config.body.demo,false);assert.equal(config.body.production,true);
+    const config=await request('/api/config');assert.equal(config.body.demo,false);assert.equal(config.body.production,true);assert.deepEqual(config.body.features,{smartDashboard:false,dashboardMetrics:false});
     assert.equal((await auth({mode:'demo',role:'admin'})).status,404);
     assert.equal((await request('/api/auth',{mode:'login',email:release.adminEmail,password:release.adminPassword},'','https://wrong.example')).status,403);
     assert.equal((await request('/api/auth',{mode:'login',email:release.adminEmail,password:release.adminPassword},'','')).status,403);
     const admin=await login(release.adminEmail,release.adminPassword);assert.equal(admin.status,200);assert.match(admin.headers.get('set-cookie'),/Secure/);assert.match(admin.headers.get('set-cookie'),/HttpOnly/);
     assert.equal(admin.body.admin.profiles.length,1);assert.equal(admin.body.posts.length,0);assert.equal(admin.body.conversations.length,0);
-    assert.equal(admin.body.identity,undefined);assert.equal((await act(admin.cookie,'identity',{operation:'switch',context:'personal:superAdmin'})).status,404);
+    assert.equal(admin.body.identity,undefined);assert.equal(admin.body.dashboard,undefined);assert.equal((await act(admin.cookie,'identity',{operation:'switch',context:'personal:superAdmin'})).status,404);
     assert.equal((await auth({mode:'register',email:'minor@example.test',name:'Minor',password:'A-long-test-password!',role:'athlete',adult:false,acceptPolicies:true})).status,400);
     const aEmail='athlete@example.test',bEmail='partner@example.test';
     const reg=await register(aEmail,'Athlete');assert.equal(reg.status,201);assert(reg.body.verificationRequired);assert(!reg.cookie);assert.equal(outbox.length,1);

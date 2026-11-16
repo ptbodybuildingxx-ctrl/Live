@@ -249,6 +249,18 @@ export default {
   "lang_en": "Engelska",
   "lang_sv": "Svenska",
   "spokenLanguages": "Talade språk",
-  "financeReports": "Ekonomiska rapporter"
+  "financeReports": "Ekonomiska rapporter",
+  "smartDashboard": "Smart översikt",
+  "dashboardIntro": "Din aktuella roll och kontext styr sammanfattningar och genvägar. Planerade verktyg är endast förhandsvisningar.",
+  "dashboardJoinedChallenges": "Mina utmaningar",
+  "dashboardUpcomingSessions": "Mina kommande pass",
+  "dashboardClubContext": "Klubbkontext",
+  "dashboardClubAccounts": "Klubbkonton",
+  "dashboardPendingInvites": "Väntande klubbinbjudningar",
+  "dashboardPendingReports": "Väntande anmälningar",
+  "dashboardPlatformAdmin": "Plattformsadministration",
+  "dashboardSettingsHint": "Visningsinställningen gäller endast detta konto och denna rollkontext på den här enheten.",
+  "dashboardCompact": "Kompakt översikt (dölj sammanfattningssiffror)",
+  "dashboardMetricsDisabled": "Sammanfattningssiffrorna är avstängda i den lokala konfigurationen."
 };
 

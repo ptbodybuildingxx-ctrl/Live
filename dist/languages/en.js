@@ -249,6 +249,18 @@ export default {
   "lang_en": "English",
   "lang_sv": "Swedish",
   "spokenLanguages": "Spoken languages",
-  "financeReports": "Financial reports"
+  "financeReports": "Financial reports",
+  "smartDashboard": "Smart dashboard",
+  "dashboardIntro": "Your current role and context determine these summaries and shortcuts. Planned tools are previews only.",
+  "dashboardJoinedChallenges": "Joined challenges",
+  "dashboardUpcomingSessions": "My upcoming sessions",
+  "dashboardClubContext": "Club context",
+  "dashboardClubAccounts": "Club accounts",
+  "dashboardPendingInvites": "Pending club invitations",
+  "dashboardPendingReports": "Pending reports",
+  "dashboardPlatformAdmin": "Platform administration",
+  "dashboardSettingsHint": "This display preference applies to this account and role context on this device only.",
+  "dashboardCompact": "Compact dashboard (hide summary numbers)",
+  "dashboardMetricsDisabled": "Summary numbers are disabled by the local feature configuration."
 };
 

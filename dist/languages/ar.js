@@ -249,6 +249,18 @@ export default {
   "lang_en": "الإنجليزية",
   "lang_sv": "السويدية",
   "spokenLanguages": "لغات المدرب",
-  "financeReports": "التقارير المالية"
+  "financeReports": "التقارير المالية",
+  "smartDashboard": "لوحة التحكم الذكية",
+  "dashboardIntro": "تعتمد الملخصات والاختصارات على دورك والسياق الحالي. الأدوات المخططة للمعاينة فقط.",
+  "dashboardJoinedChallenges": "التحديات التي انضممت إليها",
+  "dashboardUpcomingSessions": "جلساتي القادمة",
+  "dashboardClubContext": "سياق النادي",
+  "dashboardClubAccounts": "حسابات النادي",
+  "dashboardPendingInvites": "دعوات النادي المعلقة",
+  "dashboardPendingReports": "البلاغات المعلقة",
+  "dashboardPlatformAdmin": "إدارة المنصة",
+  "dashboardSettingsHint": "ينطبق تفضيل العرض على هذا الحساب وسياق الدور على هذا الجهاز فقط.",
+  "dashboardCompact": "عرض مختصر (إخفاء أرقام الملخص)",
+  "dashboardMetricsDisabled": "أرقام الملخص معطلة في إعدادات التشغيل المحلي."
 };
 
