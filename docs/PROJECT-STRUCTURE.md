@@ -8,7 +8,7 @@ build step. Keep the local SQLite database, secrets and backups out of Git.
 | --- | --- |
 | `server.mjs` | HTTP routing, authorization, action dispatch and static asset allowlist |
 | `identity.mjs`, `coaching.mjs` | Account contexts, permissions and coaching relationships |
-| `training.mjs`, `nutrition.mjs`, `wellness.mjs` | Independent domain logic |
+| `training.mjs`, `nutrition.mjs`, `wellness.mjs`, `health.mjs` | Independent domain logic |
 | `club-ops.mjs`, `club-chat.mjs`, `programs.mjs` | Club and program domains |
 | `dist/app.js` | Application shell, navigation and event dispatch |
 | `dist/core/` | Domain UI modules, registries, calculators and shared disclosure helpers |

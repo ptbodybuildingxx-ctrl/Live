@@ -59,4 +59,6 @@ All 200 built-in entries now have administrator-visible original editorial instr
 
 ## MVP scope and rules
 
+Health Pro extends Sprint 04 locally with recurring habits, private daily activity, sleep and recovery ratings, body circumferences, recorded-data summaries, revocable aggregate coaching sharing, optional personal targets, 30-day charts, 12 habit templates and active-use reminders. See [Health Pro](HEALTH-PRO.md). Wearable synchronization, external reminder delivery and production release remain deferred.
+
 The MVP prioritizes identity, security, core training/nutrition/habits and coach directory. Existing social features remain available locally. All other modules are developed and released gradually; scaffolding is not a claim of completion. The public version requires a secure server and validated production configuration. Only free-tier infrastructure is targeted initially; operating costs depend on actual usage and service limits. No live external database, real payments or production deployment are authorized by this sprint.

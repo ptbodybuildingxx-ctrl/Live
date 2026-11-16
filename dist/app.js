@@ -4,7 +4,10 @@ import {workspacePage,toggleSample,toggleCoachLanguage,resetWorkspace} from './c
 import {identityPage,workspaceRole} from './core/identity-ui.js';
 import {dashboardPage,dashboardSettings,dashboardCompact,setDashboardCompact} from './core/dashboard.js';
 import {wellnessKinds} from './core/wellness-schema.js';
-import {wellnessForm,wellnessFormRecord,wellnessSettings} from './core/wellness-ui.js';
+import {wellnessForm,wellnessFormRecord,wellnessSettings,todayLocal} from './core/wellness-ui.js';
+import {habitForm,healthGoalForm,healthGoalPayload} from './core/health-ui.js';
+import {healthHabitTemplates} from './core/health-config.js';
+import {healthReminderBanner} from './core/health-insights.js';
 import {coachingProgramForm} from './core/coaching-ui.js';
 import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
@@ -59,6 +62,7 @@ function render(){
   if(page==='home'&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',`<section class="card row wrap workspace-entry"><div class="grow"><h3>${t('workspace')}</h3><small>${t('workspaceIntro')}</small></div>${btn(t('seeAll'),'nav','data-id="workspace"','primary','dumbbell')}</section>`);
   if(page==='settings')$('.main-content').insertAdjacentHTML('beforeend',`<section class="card stack account-panel"><h2>${t('privacy')}</h2>${btn(t('dataExport'),'account','data-id="dataExport"','secondary')}${btn(t('logoutAll'),'account','data-id="logoutAll"','secondary')}${state.me.role!=='admin'?btn(t('deleteAccount'),'account','data-id="deleteAccount"','danger'):''}<div class="row wrap"><a href="/privacy?lang=${lang}">${t('privacyPolicy')}</a><a href="/terms?lang=${lang}">${t('terms')}</a></div></section>`);
   if(page==='home'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',dashboardPage({state,production:config.production,t,h,btn,compact:dashboardCompact(state,localStorage)}));
+  if(page!=='health'&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',healthReminderBanner({state,t,h,btn}));
   if(page==='settings'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('beforeend',dashboardSettings({state,production:config.production,t,compact:dashboardCompact(state,localStorage)}));
   if(page==='settings'&&!config.production&&state.wellness?.enabled)$('.main-content').insertAdjacentHTML('beforeend',wellnessSettings({state,t,btn}));
   document.querySelectorAll('[data-action=follow]').forEach(el=>{if((state.followRequests||[]).some(r=>r.from===state.me.id&&r.to===el.dataset.id))el.textContent=t('cancelRequest')});
@@ -144,6 +148,16 @@ document.addEventListener('click',async e=>{
     case 'coachingProgramArchive':if(!config.production&&state.coaching?.role==='coach'&&confirm(t('coachingArchiveConfirm')))await act('coaching',{operation:'programArchive',linkId:el.dataset.link,programId:id});break;
     case 'coachingProgramComplete':if(!config.production&&state.coaching?.role==='member')await act('coaching',{operation:'programComplete',linkId:el.dataset.link,programId:id,completed:el.dataset.completed==='true'});break;
     case 'wellnessEnable':if(!config.production&&state.wellness&&!state.wellness.enabled&&confirm(t('wellnessConsent')))await act('wellness',{operation:'enable',confirm:true});break;
+    case 'healthForm':if(!config.production&&state.wellness?.enabled&&page==='health'){
+      const habit=state.wellness.health?.habits.find(x=>x.id===id);
+      if(op==='healthGoalsSet'){modal(t('healthEditGoals'),form('healthGoals',healthGoalForm(state.wellness.health?.goals,t,h)));break}
+      if(op==='healthHabitTemplate'){const p=healthHabitTemplates.find(x=>x.id===id);if(p)modal(t('healthAddHabit'),form('healthHabit',habitForm({name:t(p.label),days:[0,1,2,3,4,5,6],reminder:''},t,h)),{operation:'healthHabitCreate'});break}
+      if(op==='healthHabitCreate'||(op==='healthHabitEdit'&&habit)||(op==='healthHabitSuggest'&&state.coaching?.role==='coach'))modal(t(op==='healthHabitSuggest'?'healthSuggest':op==='healthHabitEdit'?'wellnessEdit':'healthAddHabit'),form('healthHabit',habitForm(habit,t,h)),{operation:op,id,linkId:id});
+    }break;
+    case 'healthAction':if(!config.production&&state.wellness?.enabled&&page==='health'){
+      if(op==='healthShare'&&el.dataset.enabled==='true'&&!confirm(t('healthShareNotice')))break;
+      await act('wellness',{operation:op,id,linkId:id,date:todayLocal(),completed:el.dataset.completed==='true',enabled:el.dataset.enabled==='true',accept:accept==='true'});
+    }break;
     case 'wellnessNew':if(!config.production&&state.wellness?.enabled&&Object.hasOwn(wellnessKinds,id)&&wellnessKinds[id].module===page)modal(t(wellnessKinds[id].label),form('wellness',wellnessForm(id,null,t,h)),{operation:'create',kind:id});break;
     case 'wellnessEdit':{const r=state.wellness?.records.find(x=>x.id===id);if(!config.production&&r&&wellnessKinds[r.kind].module===page)modal(t(wellnessKinds[r.kind].label),form('wellness',wellnessForm(r.kind,r.data,t,h)),{operation:'update',kind:r.kind,id:r.id});break;}
     case 'wellnessDelete':if(!config.production&&state.wellness?.records.some(r=>r.id===id)&&confirm(t('wellnessDeleteConfirm')))await act('wellness',{operation:'delete',id});break;
@@ -246,6 +260,8 @@ document.addEventListener('submit',async e=>{
   if(type==='coachingInvite'){if(!config.production&&state.coaching&&confirm(t('coachingConsent')))await act('coaching',{operation:'invite',target:data.target});return;}
   if(type==='coachingProgram'){if(!config.production&&state.coaching?.role==='coach'&&modalPayload){const ok=await act('coaching',{...modalPayload,title:data.title,exercises:String(data.exercises).split(/\r?\n/).map(x=>x.trim()).filter(Boolean),notes:data.notes});if(ok){closeModal();toast(t('success'))}}return;}
   if(type==='wellness'){if(!config.production&&state.wellness?.enabled&&modalPayload&&Object.hasOwn(wellnessKinds,modalPayload.kind)){const ok=await act('wellness',{...modalPayload,record:wellnessFormRecord(modalPayload.kind,fd)});if(ok){closeModal();toast(t('success'))}}return;}
+  if(type==='healthHabit'){if(!config.production&&state.wellness?.enabled&&modalPayload&&page==='health'){const ok=await act('wellness',{...modalPayload,name:data.name,days:fd.getAll('days').map(Number),reminder:data.reminder,date:todayLocal()});if(ok){closeModal();toast(t('success'))}}return;}
+  if(type==='healthGoals'){if(!config.production&&state.wellness?.enabled&&page==='health'){const ok=await act('wellness',{operation:'healthGoalsSet',goals:healthGoalPayload(fd)});if(ok){closeModal();toast(t('success'))}}return;}
   if(type==='identity'){if(!state.identity||config.production)return;await act('identity',{...data,clubId:data.clubId||null});return}
   try{
     const b={...data,...modalPayload};

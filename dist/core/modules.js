@@ -3,7 +3,7 @@ export const modules = [
   {id:'train',icon:'dumbbell',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['workoutPlans','workoutLog','workoutProgress']},
   {id:'trainingPro',icon:'dumbbell',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['exerciseLibrary','trainingBuilder','trainingLive','trainingProgress']},
   {id:'nutrition',icon:'zap',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['mealLog','calories','water']},
-  {id:'health',icon:'check',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['habits','sleep','measurements']},
+  {id:'health',icon:'check',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['healthRecurring','sleep','healthActivity','healthRecovery','measurements','healthReports']},
   {id:'rehab',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['injuryLog','rehabPlans','consent']},
   {id:'coaches',icon:'profile',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['coachDirectory','coachPrograms','traineeProgress']},
   {id:'clubs',icon:'social',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['clubDirectory','branches','memberships','staff']},

@@ -1,6 +1,20 @@
 .workspace-entry {
   margin-bottom:18px
 }
+.health-pro .dashboard-metrics {grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr))}
+.health-pro .stat-box {min-width:0;overflow-wrap:anywhere}
+.health-pro .health-disclosure {min-height:0;box-shadow:var(--shadow-panel)}
+.health-disclosure-body {min-width:0;padding-block:4px}
+.health-disclosure-body .rule {overflow-wrap:anywhere}
+.health-pro .health-disclosure-body fieldset {min-width:0}
+.health-reminder {margin-block-end:12px;border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+.health-reminder small {display:block}
+.health-chart {min-width:0}
+.health-chart-svg {width:100%;height:auto;display:block;direction:ltr;overflow:visible}
+.health-chart-svg text {font-size:10px;fill:var(--muted)}
+.health-chart-grid {stroke:var(--line-strong);stroke-width:1}
+.health-chart-line {stroke:var(--green);stroke-width:2;stroke-linecap:round}
+.health-chart-dot {fill:var(--green);stroke:var(--panel);stroke-width:1}
 .workspace-hero {
   min-height:180px
 }
