@@ -5,3 +5,4 @@ node_modules/
 .env.*
 !.env.production.example
 backups/
+node-compile-cache/

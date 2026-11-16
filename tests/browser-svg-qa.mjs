@@ -21,13 +21,16 @@ async function enter(page,role,config){
  await page.addInitScript(lang=>localStorage.setItem('ml-language',lang),config.lang);
  await page.goto(origin);
  await page.locator(`[data-action="demo"][data-id="${role}"]`).click();
- await page.locator('[data-action="nav"][data-id="trainingPro"]').first().waitFor({state:'attached'});
+ await page.locator('.topbar [data-action="nav"][data-id="workspace"]').waitFor();
  await page.evaluate(async theme=>{
   const response=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'settings',theme})});
   if(!response.ok)throw new Error('theme setup failed');
  },config.theme);
  await page.reload();
- await page.locator('[data-action="nav"][data-id="trainingPro"]').first().click();
+ await page.locator('.topbar [data-action="nav"][data-id="workspace"]').click();
+ const card=page.locator('details[data-disclosure-key="module:trainingPro"]');
+ await card.locator('summary').click();
+ await card.locator('[data-action="nav"][data-id="trainingPro"]').click();
  await page.locator('.training-cards').waitFor();
 }
 try{

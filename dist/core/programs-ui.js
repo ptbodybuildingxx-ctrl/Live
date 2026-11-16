@@ -4,6 +4,7 @@ import {campaignPage} from './campaign-ui.js';
 import {eventsPage} from './events-ui.js';
 import {masterAdminPage} from './master-admin-ui.js';
 const filters=new Map();
+export function resetProgramFilters(){filters.clear()}
 export function programFilter(userId,data){if(['events','campaigns','ramadan','startfit','library','rehab'].includes(data.module))filters.set(userId+':'+data.module,{language:data.language,category:data.category,region:data.region,contentType:data.contentType,topic:data.topic,format:data.format,view:data.view,sort:data.sort,query:String(data.query||'').slice(0,100)})}
 export function programPage({state,id,t,h,btn}){
   const p=state.programs;if(!p)return '';

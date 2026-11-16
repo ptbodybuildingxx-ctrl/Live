@@ -18,7 +18,7 @@ import {updateMasterAdminFilter,moveMasterAdminPage} from './core/master-admin-u
 import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer,updateTrainingPicker,updateTemplateFilter,rememberTrainingDraft,clearTrainingDraft} from './core/training-ui.js';
 import {nutritionUI,nutritionPayload,resetNutritionUI,updateNutritionPicker,showEnergyEstimate,fillSmartTargets} from './core/nutrition-ui.js';
 import {bindDrawingPreviews} from './core/xdraw-ui.js';
-import {captureDisclosures,restoreDisclosures} from './core/disclosures.js';
+import {captureDisclosures,restoreDisclosures,hasUnsavedForm} from './core/disclosures.js';
 bindDrawingPreviews(document);
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
@@ -297,5 +297,5 @@ document.addEventListener('dragend',()=>{trainingDrag=null});
 setInterval(()=>{if(state&&page==='trainingPro')updateTrainingTimer()},1000);
 async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'&&!state.dashboard?'admin':'home'}catch{}render()}
 init();
-setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||(page==='rehab'&&document.querySelector('.rehab-edit[open]'))||(page==='library'&&document.querySelector('.library-edit[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
+setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||(page==='rehab'&&document.querySelector('.rehab-edit[open]'))||(page==='library'&&document.querySelector('.library-edit[open]'))||hasUnsavedForm($('.main-content'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id||hasUnsavedForm($('.main-content'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
 

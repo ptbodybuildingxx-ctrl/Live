@@ -13,6 +13,26 @@ export function restoreDisclosures(root, scope, previous) {
   }
 }
 
+// A background snapshot must not overwrite user edits after a field loses focus.
+// Compare DOM controls with their rendered defaults; never store their values.
+export function hasUnsavedForm(root) {
+  if (!root) return false;
+  for (const form of root.querySelectorAll('form[data-form]')) {
+    for (const el of form.elements) {
+      if (el.disabled || !el.name) continue;
+      if (el.tagName === 'SELECT') {
+        const options = [...el.options], explicit = options.some(o => o.defaultSelected), first = options.findIndex(o => !o.disabled);
+        if (options.some((o, i) => o.selected !== (o.defaultSelected || (!explicit && !el.multiple && i === first)))) return true;
+      } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+        if (['checkbox','radio'].includes(el.type)) { if (el.checked !== el.defaultChecked) return true; }
+        else if (el.type === 'file') { if (el.files?.length) return true; }
+        else if (!['hidden','submit','button','reset'].includes(el.type) && el.value !== el.defaultValue) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function workspaceCard({ module, t, h, ic, btn }) {
   const { id, icon, stage, items } = module;
   return `<details class="workspace-card" data-disclosure-key="module:${h(id)}">

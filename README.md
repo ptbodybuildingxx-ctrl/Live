@@ -35,6 +35,8 @@ file map and guidance on extending modules without duplicating style rules.
 
 **Master Admin Pro:** context-gated platform overview, searchable account management, verification decisions, local module rollout controls and a scoped audit history. See [Master Admin Pro](docs/MASTER-ADMIN-PRO.md).
 
+**Final local QA:** 67/67 automated tests, syntax validation for 85 JavaScript sources, 450 workspace render checks and 54 static-route checks. Actual browser/device acceptance and production approval remain pending. See [Final QA](docs/FINAL-QA.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا
