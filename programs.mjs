@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {activeContext,can} from './identity.mjs';
+import {rehabView,rehabContentView,rehabAction,rehabExport,clearRehabRecords} from './rehab.mjs';
 
 // Local test-data only. All writes are validated again on the server.
 export const programModules=['events','campaigns','library','rehab'];
@@ -16,9 +17,6 @@ const enabled=(s,k)=>read(s).flags[k]!==false;
 const admin=(s,id)=>can(s,id,'platform.admin');
 const personal=(s,id)=>can(s,id,'personal.read');
 const profile=(s,id)=>s.profiles.find(p=>p.id===id&&!p.suspended&&p.emailVerified!==false);
-const blocked=(s,a,b)=>s.blocks.some(x=>(x.from===a&&x.to===b)||(x.from===b&&x.to===a));
-const activeLink=(s,l)=>l.status==='active'&&profile(s,l.member)&&profile(s,l.coach)?.verified===true&&!blocked(s,l.member,l.coach);
-const links=s=>s.coaching?.links||[];
 const eligible=(s,id,clubId)=>!!profile(s,id)&&(!clubId||s.identity?.grants.some(g=>g.userId===id&&g.clubId===clubId));
 const manage=(s,id,row)=>row.clubId?can(s,id,'club.manage',row.clubId):admin(s,id);
 const scope=(s,id,row)=>!row.clubId||can(s,id,'club.read',row.clubId);
@@ -64,16 +62,13 @@ function publicItem(s,id,row){
   return {...fields,manage:m,count:seats.length,waitCount:event?e.length-seats.length:0,waiting:!!own&&event&&!seats.includes(own),joined:!!own,checkins:own?.checkins||[],eventStatus:event?eventStatus(s,row):undefined,
     ...(m&&row.module!=='library'?{roster:e.map(x=>({id:x.owner,name:profile(s,x.owner)?.name,checkins:x.checkins.length,attended:!!x.attended,waiting:event&&!seats.includes(x)}))}:{})};
 }
-const ownRehab=(s,id)=>read(s).rehab.filter(r=>r.owner===id);
-const rehabRecord=({owner,shareLink,...r})=>({...r,shareLink:shareLink||null});
 export function programsView(s,id){
   if(!s.identity)return undefined;
   const d=read(s),ctx=activeContext(s,id),isAdmin=admin(s,id),p=personal(s,id);
   return {flags:Object.fromEntries(programModules.map(k=>[k,enabled(s,k)])),canAdmin:isAdmin,canClubEvents:!!ctx?.clubId&&can(s,id,'club.manage',ctx.clubId),
     items:d.items.filter(r=>(enabled(s,r.module)||isAdmin)&&scope(s,id,r)&&(r.status==='published'||manage(s,id,r))).map(r=>publicItem(s,id,r)),
-    ...(p&&enabled(s,'rehab')?{rehab:{enabled:!!s.wellness?.enabled.includes(id),records:ownRehab(s,id).map(rehabRecord),
-      choices:links(s).filter(l=>l.member===id&&activeLink(s,l)).map(l=>({id:l.id,name:profile(s,l.coach)?.name})),
-      shared:ctx.role==='coach'?d.rehab.filter(r=>links(s).some(l=>l.id===r.shareLink&&l.coach===id&&l.member===r.owner&&activeLink(s,l))).map(r=>({...rehabRecord(r),memberName:profile(s,r.owner)?.name})):[]}}:{}),
+    ...(p&&enabled(s,'rehab')?{rehab:rehabView(s,id,d)}:{}),
+    ...(isAdmin||(p&&enabled(s,'rehab'))?{rehabContent:rehabContentView(d,isAdmin,enabled(s,'rehab'))}:{}),
     ...(isAdmin?{audit:d.audit,summary:{clubs:s.identity.clubs.length,accounts:s.profiles.length,events:d.items.filter(r=>r.module==='events').length,campaigns:d.items.filter(r=>r.module==='campaigns').length,library:d.items.filter(r=>r.module==='library').length}}:{})};
 }
 export function programsAction(s,id,b){
@@ -84,16 +79,7 @@ export function programsAction(s,id,b){
   }
   need(programModules.includes(module),'Invalid module');need(enabled(s,module)||admin(s,id),'Module disabled',403);
   if(module==='rehab'){
-    need(personal(s,id)&&s.wellness?.enabled.includes(id)&&enabled(s,module),'Enable personal test records first',403);
-    if(op==='create'){
-      need(ownRehab(s,id).length<100,'Record limit',429);
-      d.rehab.push({id:randomUUID(),owner:id,title:txt(b.title,100),note:txt(b.note,1000),plan:txt(b.plan,1000,true),date:date(b.date),progress:num(b.progress,0,100),shareLink:null});return;
-    }
-    const r=ownRehab(s,id).find(x=>x.id===b.id);need(r,'Record not found',404);
-    if(op==='delete'){d.rehab=d.rehab.filter(x=>x.id!==r.id);return}
-    if(op==='update'){Object.assign(r,{title:txt(b.title,100),note:txt(b.note,1000),plan:txt(b.plan,1000,true),date:date(b.date),progress:num(b.progress,0,100),shareLink:null});return}
-    if(op==='share'){need(b.linkId===null||links(s).some(l=>l.id===b.linkId&&l.member===id&&activeLink(s,l)),'Accepted coaching relationship required',403);r.shareLink=b.linkId;return}
-    fail('Unknown rehab operation');
+    return rehabAction(s,id,d,b,enabled(s,module),(operation,target)=>audit(s,id,operation,target,module));
   }
   if(op==='create'){
     const clubId=b.scope==='club'?activeContext(s,id)?.clubId:null;
@@ -129,13 +115,13 @@ export function programsAction(s,id,b){
   if(op==='checkin'){need(module==='campaigns'&&e&&active(r),'Active campaign enrollment required',403);need(!e.checkins.includes(today()),'Already checked in',409);e.checkins.push(today());return}
   fail('Unknown operation');
 }
-export function clearRehab(s,id){if(s.programs)s.programs.rehab=s.programs.rehab.filter(r=>r.owner!==id)}
+export function clearRehab(s,id){clearRehabRecords(s.programs,id)}
 export function revokeProgramGrant(s,clubId,id){
   if(!s.programs||eligible(s,id,clubId))return;
   const ids=new Set(s.programs.items.filter(r=>r.clubId===clubId).map(r=>r.id));
   s.programs.entries=s.programs.entries.filter(e=>e.owner!==id||!ids.has(e.itemId));
 }
-export function programsExport(s,id){if(!s.programs)return undefined;const d=read(s);return {entries:d.entries.filter(e=>e.owner===id),rehab:ownRehab(s,id).map(rehabRecord)}}
+export function programsExport(s,id){if(!s.programs)return undefined;const d=read(s);return {entries:d.entries.filter(e=>e.owner===id),rehab:rehabExport(d,id)}}
 export function removePrograms(s,id){
   if(!s.programs)return;clearRehab(s,id);
   const d=s.programs,removed=new Set(d.items.filter(r=>r.clubId&&!s.identity.clubs.some(c=>c.id===r.clubId)).map(r=>r.id));

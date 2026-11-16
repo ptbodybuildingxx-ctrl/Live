@@ -4,7 +4,7 @@ export const modules = [
   {id:'trainingPro',icon:'dumbbell',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['exerciseLibrary','trainingBuilder','trainingLive','trainingProgress']},
   {id:'nutrition',icon:'zap',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['mealLog','calories','water']},
   {id:'health',icon:'check',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['healthRecurring','sleep','healthActivity','healthRecovery','measurements','healthReports']},
-  {id:'rehab',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['injuryLog','rehabPlans','consent']},
+  {id:'rehab',icon:'shield',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['injuryLog','rehabTimeline','rehabPlanChecklist','rehabContentLibrary','consent']},
   {id:'coaches',icon:'profile',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['coachDirectory','coachPrograms','traineeProgress']},
   {id:'clubs',icon:'social',roles:['athlete','coach','gym','admin'],stage:'prototype',items:['clubDirectory','branches','memberships','staff']},
   {id:'finance',icon:'calendar',roles:['gym','admin'],stage:'prototype',items:['income','expenses','invoices','financeReports']},

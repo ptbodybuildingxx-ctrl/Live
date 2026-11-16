@@ -127,7 +127,7 @@ document.addEventListener('click',async e=>{
     }break;
     case 'programAction':if(!config.production&&state.programs){
       if(op==='download'){const r=state.programs.items.find(x=>x.module==='library'&&x.id===id);if(r){const url=URL.createObjectURL(new Blob([r.title+'\n'+r.author+'\n'+r.rightsNote+'\n\n'+r.content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='musclivo-'+r.id+'.txt';a.click();URL.revokeObjectURL(url)}break;}
-      if(!['delete','archive'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true'});
+      if(!['delete','archive','rehabCheckinDelete','rehabTaskDelete','rehabContentArchive'].includes(op)||confirm(t('programConfirm')))await act('programs',{operation:op,module:el.dataset.module,id,enabled:el.dataset.enabled==='true',target:el.dataset.target,attended:el.dataset.attended==='true',taskId:el.dataset.task,checkinId:el.dataset.checkin,completed:el.dataset.completed==='true'});
     }break;
     case 'nav':page=id;if(id==='chat')chatMode=state.clubChat?'club':'personal';render();window.scrollTo(0,0);break;
     case 'chatMode':chatMode=id==='club'?'club':'personal';render();break;
@@ -285,5 +285,5 @@ document.addEventListener('dragend',()=>{trainingDrag=null});
 setInterval(()=>{if(state&&page==='trainingPro')updateTrainingTimer()},1000);
 async function init(){try{config=await api('config')}catch{}try{state=await api('state');lang=state.me.lang||lang;page=state.me.role==='admin'&&!state.dashboard?'admin':'home'}catch{}render()}
 init();
-setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
+setInterval(async()=>{if(!state||busy||(['trainingPro','nutrition'].includes(page)&&document.querySelector('.training-form details[open],.main-content details[open]'))||(page==='rehab'&&document.querySelector('.rehab-edit[open]'))||!$('#modal').hidden||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;const revision=stateRevision;try{const next=await api('state');if(!state||busy||revision!==stateRevision||next.me.id!==state.me.id)return;state=next;render()}catch(e){if(e.status===401&&state&&revision===stateRevision&&!busy){state=null;render()}}},15000);
 

@@ -15,6 +15,12 @@
 .health-chart-grid {stroke:var(--line-strong);stroke-width:1}
 .health-chart-line {stroke:var(--green);stroke-width:2;stroke-linecap:round}
 .health-chart-dot {fill:var(--green);stroke:var(--panel);stroke-width:1}
+.rehab-pro .dashboard-metrics {grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr))}
+.rehab-pro .rehab-disclosure {min-height:0;box-shadow:var(--shadow-panel)}
+.rehab-pro .rehab-disclosure summary strong {min-width:0;overflow-wrap:anywhere}
+.rehab-pro .rehab-body {min-width:0;overflow-wrap:anywhere;padding-block:4px}
+.rehab-pro .rehab-body .row.wrap>* {min-width:0}
+.rehab-pro .rehab-body textarea {min-height:90px}
 .workspace-hero {
   min-height:180px
 }
