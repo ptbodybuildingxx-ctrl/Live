@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readReleaseConfig } from './release.mjs';
-import {ensureIdentity,identityView,identityAction,identityExport,removeIdentity} from './identity.mjs';
+import {ensureIdentity,identityView,identityAction,identityExport,removeIdentity,can} from './identity.mjs';
 import {dashboardFlags,dashboardView} from './dashboard.mjs';
 import {wellnessView,wellnessAction,wellnessExport,removeWellness} from './wellness.mjs';
 import {coachingView,coachingAction,coachingExport,removeCoaching,revokeCoachingPair,disableWorkoutSharing} from './coaching.mjs';
@@ -360,9 +360,13 @@ export function createApp({dbPath,demoPassword,release={production:false},featur
         return json(res,{error:'Not found'},404);
       }
       const names={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/i18n.js':'i18n.js','/languages/ar.js':'languages/ar.js','/languages/en.js':'languages/en.js','/languages/sv.js':'languages/sv.js','/core/modules.js':'core/modules.js','/core/workspace.js':'core/workspace.js','/core/identity-ui.js':'core/identity-ui.js','/core/dashboard.js':'core/dashboard.js','/core/wellness-schema.js':'core/wellness-schema.js','/core/wellness-ui.js':'core/wellness-ui.js','/core/coaching-ui.js':'core/coaching-ui.js','/core/club-ops-ui.js':'core/club-ops-ui.js','/core/club-chat-ui.js':'core/club-chat-ui.js','/core/programs-ui.js':'core/programs-ui.js','/core/training-ui.js':'core/training-ui.js','/core/exercise-catalog.js':'core/exercise-catalog.js','/logo.svg':'logo.svg','/privacy':'privacy.html','/terms':'terms.html','/policy.js':'policy.js','/robots.txt':'robots.txt'};
+      names['/core/xdraw-ui.js']='core/xdraw-ui.js';
+      const draftModules=['xdraw-engine','exercise-drawing-new','exercise-drawings','exercise-kinematics','exercise-drawing-corrections','exercise-drawing-legacy-tracks','exercise-drawing-anatomy','exercise-apparatus'];
+      const draftModule=draftModules.find(name=>url.pathname==='/core/'+name+'.js');
+      if(draftModule&&!production){const id=session(req),s=read();assert(id&&profile(s,id)&&!profile(s,id).suspended&&can(s,id,'platform.admin'),'Not authorized',403);names[url.pathname]='core/'+draftModule+'.js'}
       const file=names[url.pathname];if(!file){res.writeHead(404);return res.end('Not found')}
       const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.txt':'text/plain; charset=utf-8'};
-      res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));
+      res.writeHead(200,{'Content-Type':types[extname(file)],'Cache-Control':draftModule?'no-store':'no-cache'});res.end(readFileSync(resolve(root,'dist',file)));
     }catch(e){json(res,{error:e.status?e.message:'Internal error'},e.status||500);if(!e.status)console.error(e)}
   });
   server.requestTimeout=15000;server.headersTimeout=10000;server.keepAliveTimeout=5000;server.maxHeadersCount=80;

@@ -17,6 +17,10 @@
 .training-cards{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
 .training-cards .card,.training-block,.training-form{min-width:0;overflow-wrap:anywhere}
 .training-media{margin:0;display:grid;gap:.5rem}.training-media img,.training-media video{display:block;width:100%;max-height:360px;object-fit:contain;border-radius:12px;background:var(--bg)}.training-media figcaption{font-size:.85rem;color:var(--muted)}
+.training-drawing{min-width:0;border:1px solid var(--line);border-radius:12px;padding:.65rem}
+.training-drawing img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain;border-radius:10px;max-height:420px}
+.training-drawing [hidden]{display:none!important}
+.drawing-controls{display:grid;gap:.55rem;min-width:0}.drawing-controls input[type=range]{width:100%;min-width:0;accent-color:var(--green)}
 .training-filter{border:1px solid var(--line);border-radius:10px;display:flex;flex-wrap:wrap;gap:12px;padding:12px;min-width:0}
 .training-form details{padding:10px;min-width:0}
 .training-form details summary,.training-cards summary{cursor:pointer;font-weight:600}

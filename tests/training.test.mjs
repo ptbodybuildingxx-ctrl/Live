@@ -61,6 +61,11 @@ test('catalog management is administrator-only and browser modules are served',a
   assert.equal((await train(admin,'catalogUpdate',{...row,id,names:{en:'missing'}})).status,400);
   assert(!(await view(admin)).data.training.sessions);
   for(const pathname of ['/core/training-ui.js','/core/exercise-catalog.js']){const response=await fetch(base+pathname);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);assert((await response.text()).length>500)}
+  for(const path of ['/core/xdraw-engine.js','/core/exercise-drawings.js','/core/exercise-drawing-new.js','/core/exercise-kinematics.js','/core/exercise-drawing-corrections.js','/core/exercise-drawing-legacy-tracks.js','/core/exercise-drawing-anatomy.js','/core/exercise-apparatus.js']){
+    assert.equal((await fetch(base+path)).status,403);
+    assert.equal((await fetch(base+path,{headers:{Cookie:a.cookie}})).status,403);
+    assert.equal((await fetch(base+path,{headers:{Cookie:admin.cookie}})).status,200);
+  }
 }));
 
 test('exercise content requires all translated notes, rights, three assets and specialist approval; drafts are never exposed',async()=>withApp(async({login,train,view,base,db})=>{
@@ -89,6 +94,11 @@ test('exercise content requires all translated notes, rights, three assets and s
   assert.equal((await train(admin,'contentPublish',{id})).status,403);
   assert.equal((await train(admin,'contentPublish',{id,confirm:true})).status,200);
   e=(await view(a)).data.training.catalog.find(x=>x.id===id);assert.equal(e.content.status,'published');assert.equal(e.notes.en,notes.en);assert.equal(e.content.safety.en,safety.en);
+  // Legacy optional review documentation is not requested, required or exposed.
+  const stored=JSON.parse(db.prepare('SELECT data FROM state WHERE id=1').get().data);
+  stored.training.catalog.find(x=>x.id===id).content.specialistReview={reviewer:'Private legacy fixture',revision:'old'};
+  db.prepare('UPDATE state SET data=? WHERE id=1').run(JSON.stringify(stored));
+  for(const user of [admin,a])assert.equal((await view(user)).data.training.catalog.find(x=>x.id===id).content.specialistReview,undefined);
   const r=await media('video',a,null,null,'bytes=0-7');assert.equal(r.status,206);assert.equal((await r.arrayBuffer()).byteLength,8);assert.equal(r.headers.get('content-type'),'video/mp4');
   const got=await media('start',a);assert.equal(got.status,200);assert.deepEqual(Buffer.from(await got.arrayBuffer()),png);
   assert.equal((await media('start',admin,png,'image/png')).status,200);assert.equal((await media('start',a)).status,404);

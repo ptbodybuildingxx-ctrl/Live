@@ -10,6 +10,8 @@ import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
 import {programPayload,programFilter} from './core/programs-ui.js';
 import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer} from './core/training-ui.js';
+import {bindDrawingPreviews} from './core/xdraw-ui.js';
+bindDrawingPreviews(document);
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 let stateRevision=0,chatMode='personal',clubChatId=null;

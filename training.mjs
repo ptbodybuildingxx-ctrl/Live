@@ -32,7 +32,9 @@ const audit=(s,id,operation,target)=>{const a=store(s).audit;a.unshift({id:rando
 function localized(value,max,optional=false){need(value&&typeof value==='object'&&!Array.isArray(value),'Translations required');return Object.fromEntries(['ar','en','sv'].map(l=>[l,text(value[l],max,optional)]))}
 const blank=()=>({ar:'',en:'',sv:''});
 export const mediaSlots=['start','end','video'];
-const contentOf=r=>r.content||{status:'draft',mistakes:blank(),safety:blank(),assets:{},reviewedAt:null};
+// The optional specialist documentation experiment is no longer used.
+// Never expose its private fields if an older local backup contains them.
+const contentOf=r=>{const {specialistReview,reviewRevision,reviewCurrent,...content}=r.content||{status:'draft',mistakes:blank(),safety:blank(),assets:{},reviewedAt:null};return content};
 function putCatalog(s,row){const d=store(s);d.catalog=d.catalog.filter(r=>r.id!==row.id);d.catalog.push(row)}
 export function trainingMediaRow(s,id,exerciseId,slot,write=false){
   if(write)need(admin(s,id),'Catalog administration required',403);
@@ -210,5 +212,5 @@ export function trainingAction(s,id,b){
   FAIL('Unknown training operation');
 }
 export function clearTraining(s,id){if(!s.training)return;const d=s.training;d.plans=d.plans.filter(p=>p.owner!==id);d.sessions=d.sessions.filter(r=>r.owner!==id);delete d.settings[id]}
-export function removeTraining(s,id){if(!s.training)return;clearTraining(s,id);for(const p of s.training.plans)if(p.author===id){p.author=null;p.linkId=null}for(const a of s.training.audit)if(a.actor===id)a.actor=null}
+export function removeTraining(s,id){if(!s.training)return;clearTraining(s,id);for(const p of s.training.plans)if(p.author===id){p.author=null;p.linkId=null}for(const a of s.training.audit)if(a.actor===id)a.actor=null;for(const r of s.training.catalog)if(r.content?.specialistReview?.recordedBy===id)r.content.specialistReview.recordedBy=null}
 export function trainingExport(s,id){if(!s.training)return undefined;const d=s.training;return {plans:d.plans.filter(p=>p.owner===id).map(publicPlan),sessions:ownSessions(s,id).map(({owner,...r})=>r),settings:d.settings[id]||{progression:false}}}
