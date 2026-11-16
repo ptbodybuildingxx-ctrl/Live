@@ -6,6 +6,8 @@
 
 **Sprint 03 — local smart dashboard:** Home displays role-specific summaries and shortcuts for the active personal, club or platform context. Settings offer a compact dashboard view per context, and local feature flags can disable the panel or its metrics. Production remains gated. See [Dashboard](docs/DASHBOARD.md).
 
+**Sprint 04 — local personal records:** Train, Nutrition and Health now support opt-in, owner-only test records with CRUD, validation, history and summaries. Records persist in SQLite; users can export or clear their own data. Do not enter real sensitive information; production remains gated pending privacy review. See [Private records](docs/WELLNESS.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

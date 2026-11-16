@@ -3,6 +3,8 @@ import {modules,canOpen} from './core/modules.js';
 import {workspacePage,toggleSample,toggleCoachLanguage,resetWorkspace} from './core/workspace.js';
 import {identityPage,workspaceRole} from './core/identity-ui.js';
 import {dashboardPage,dashboardSettings,dashboardCompact,setDashboardCompact} from './core/dashboard.js';
+import {wellnessKinds} from './core/wellness-schema.js';
+import {wellnessForm,wellnessFormRecord,wellnessSettings} from './core/wellness-ui.js';
 const $=s=>document.querySelector(s);
 let lang=localStorage.getItem('ml-language')||'ar', state=null, page='home', feed='forYou', liveTab='match', query='', roleFilter='all', onlineOnly=false, chatId=null, authMode='login', modalPayload=null, busy=false, config={production:false,demo:false}, authEmail='';
 let stateRevision=0;
@@ -47,6 +49,7 @@ function render(){
   if(page==='settings')$('.main-content').insertAdjacentHTML('beforeend',`<section class="card stack account-panel"><h2>${t('privacy')}</h2>${btn(t('dataExport'),'account','data-id="dataExport"','secondary')}${btn(t('logoutAll'),'account','data-id="logoutAll"','secondary')}${state.me.role!=='admin'?btn(t('deleteAccount'),'account','data-id="deleteAccount"','danger'):''}<div class="row wrap"><a href="/privacy?lang=${lang}">${t('privacyPolicy')}</a><a href="/terms?lang=${lang}">${t('terms')}</a></div></section>`);
   if(page==='home'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('afterbegin',dashboardPage({state,production:config.production,t,h,btn,compact:dashboardCompact(state,localStorage)}));
   if(page==='settings'&&state.dashboard&&!config.production)$('.main-content').insertAdjacentHTML('beforeend',dashboardSettings({state,production:config.production,t,compact:dashboardCompact(state,localStorage)}));
+  if(page==='settings'&&!config.production&&state.wellness?.enabled)$('.main-content').insertAdjacentHTML('beforeend',wellnessSettings({state,t,btn}));
   document.querySelectorAll('[data-action=follow]').forEach(el=>{if((state.followRequests||[]).some(r=>r.from===state.me.id&&r.to===el.dataset.id))el.textContent=t('cancelRequest')});
   const m=$('.messages');if(m)m.scrollTop=m.scrollHeight;
 }
@@ -92,6 +95,11 @@ document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-action]');if(!el)return;const {action,id,tab,accept,op}=el.dataset;
   switch(action){
     case 'nav':page=id;render();window.scrollTo(0,0);break;
+    case 'wellnessEnable':if(!config.production&&state.wellness&&!state.wellness.enabled&&confirm(t('wellnessConsent')))await act('wellness',{operation:'enable',confirm:true});break;
+    case 'wellnessNew':if(!config.production&&state.wellness?.enabled&&Object.hasOwn(wellnessKinds,id)&&wellnessKinds[id].module===page)modal(t(wellnessKinds[id].label),form('wellness',wellnessForm(id,null,t,h)),{operation:'create',kind:id});break;
+    case 'wellnessEdit':{const r=state.wellness?.records.find(x=>x.id===id);if(!config.production&&r&&wellnessKinds[r.kind].module===page)modal(t(wellnessKinds[r.kind].label),form('wellness',wellnessForm(r.kind,r.data,t,h)),{operation:'update',kind:r.kind,id:r.id});break;}
+    case 'wellnessDelete':if(!config.production&&state.wellness?.records.some(r=>r.id===id)&&confirm(t('wellnessDeleteConfirm')))await act('wellness',{operation:'delete',id});break;
+    case 'wellnessClear':if(!config.production&&state.wellness?.enabled&&confirm(t('wellnessClearConfirm')))await act('wellness',{operation:'clear',confirm:true});break;
     case 'sampleToggle':if(!config.production&&canOpen(page,workspaceRole(state))){toggleSample(state,page,id);render()}break;
     case 'identitySwitch':if(state.identity&&!config.production)await act('identity',{operation:'switch',context:id});break;
     case 'identityResponse':if(state.identity&&!config.production)await act('identity',{operation:'respond',id,accept:el.dataset.accept==='true'});break;
@@ -144,6 +152,7 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='wellness'){if(!config.production&&state.wellness?.enabled&&modalPayload&&Object.hasOwn(wellnessKinds,modalPayload.kind)){const ok=await act('wellness',{...modalPayload,record:wellnessFormRecord(modalPayload.kind,fd)});if(ok){closeModal();toast(t('success'))}}return;}
   if(type==='identity'){if(!state.identity||config.production)return;await act('identity',{...data,clubId:data.clubId||null});return}
   try{
     const b={...data,...modalPayload};

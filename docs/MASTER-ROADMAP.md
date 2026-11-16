@@ -19,11 +19,14 @@ The existing accounts now support nine role types, accepted and revocable assign
 
 Home includes a server-projected summary for the active authenticated role and club. All nine roles receive permission-specific shortcuts; only authorized club roster counts, club invitation counts and platform moderation counts are calculated. No fabricated finance, training, member-progress or health records are shown. Planned shortcuts remain previews. See [Dashboard](DASHBOARD.md).
 
+## Sprint 04 — local personal training, nutrition and health records
+
+Owner-authenticated CRUD is available for workout programs and exercise logs, meals/calories and water, daily habits, sleep and body weight. Records persist locally across restarts, with validation and owner-only history, daily summaries, export, deletion and testing opt-in. Club, staff, coach-for-others and administrator contexts cannot read the records. This is a test-data MVP only; real sensitive-data collection and production enablement remain gated. See [Private records](WELLNESS.md).
+
 ## Remaining sprints
 
 | Sprint | Goal | Acceptance gate |
 |---|---|---|
-| 04 | Train, nutrition and health | Owner-authenticated CRUD, validation, history, safe handling of sensitive data |
 | 05 | Coach management | Mutually accepted coach/member relation, revocable access, individual programs and progress |
 | 06 | Clubs and finance | Club-scoped members, staff, branches, subscriptions, manual ledger, invoices and audit; no payments |
 | 07 | Community and chat | Club/staff/finance groups with membership enforcement, reporting and blocking |
