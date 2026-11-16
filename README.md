@@ -29,6 +29,8 @@ file map and guidance on extending modules without duplicating style rules.
 
 **Campaigns Pro:** dedicated Ramadan and StartFit pages, administrator-managed drafts, registration controls, participant limits, optional daily tasks and check-in reports. Campaigns start empty, ready for future content. See [Campaigns Pro](docs/CAMPAIGNS-PRO.md).
 
+**About & Coach Directory Pro:** a multilingual About page and expandable trainer profiles with automatic language filtering, multi-select languages, keyword search, verification filtering and consent-based coaching requests. See [About and Coach Directory](docs/ABOUT-DIRECTORY.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

@@ -13,6 +13,7 @@ import {coachingProgramForm} from './core/coaching-ui.js';
 import {clubFormFields,clubFormPayload} from './core/club-ops-ui.js';
 import {clubChatPage} from './core/club-chat-ui.js';
 import {programPayload,programFilter} from './core/programs-ui.js';
+import {updateDirectoryFilter} from './core/directory-ui.js';
 import {trainingUI,trainingPayload,resetTrainingUI,updateTrainingTimer,updateTrainingPicker,updateTemplateFilter,rememberTrainingDraft,clearTrainingDraft} from './core/training-ui.js';
 import {nutritionUI,nutritionPayload,resetNutritionUI,updateNutritionPicker,showEnergyEstimate,fillSmartTargets} from './core/nutrition-ui.js';
 import {bindDrawingPreviews} from './core/xdraw-ui.js';
@@ -222,6 +223,7 @@ document.addEventListener('submit',async e=>{
   const f=e.target.closest('[data-form]');if(!f)return;e.preventDefault();const type=f.dataset.form,fd=new FormData(f),data=Object.fromEntries(fd);
   if(type==='auth'){await sign({...data,mode:authMode,lang,acceptPolicies:fd.has('acceptPolicies'),adult:fd.has('adult')});return}
   if(type==='search'){query=data.query||'';render();return}
+  if(type==='coachDirectoryFilter'){if(state&&!config.production&&page==='coaches'){updateDirectoryFilter(state.me.id,{query:data.query,verifiedOnly:fd.has('verifiedOnly')});render()}return}
   if(type==='nutritionEstimate'){showEnergyEstimate(f,data,t);return}
   if(['nutritionFilter','nutritionViewDate','nutritionDay'].includes(type)){
     if(state?.nutrition&&!config.production){
