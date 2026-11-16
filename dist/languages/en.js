@@ -1,4 +1,5 @@
 export default {
+  "train_starterDraft": "Editorial starter draft — not specialist approved. Review this exact exercise and all three translations, then edit and save before submitting.",
   "train_stretch": "Stretch & mobility",
   "train_staticStretch": "Static stretch",
   "train_dynamicStretch": "Dynamic stretch",

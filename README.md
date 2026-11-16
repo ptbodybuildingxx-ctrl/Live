@@ -20,6 +20,8 @@
 
 **Sprint 15 — Exercise Library 200:** adds 50 entries (including 25 stretch/mobility/warm-up/cool-down movements), raises the catalog capacity to 2,000 entries, and provides local administrator media/sign-off workflow with two photos and one video, draft/review/published status, multilingual instructions, rights metadata, and authenticated media serving. Actual instructional media and specialist review still need to be supplied; no automatic publication. See [Training Pro](docs/TRAINING-PRO.md).
 
+**Sprint 15 — editorial instructions:** all 200 built-in exercises now have Arabic, English and Swedish starter technique, common-mistake and safety notes. Related exercise variants use common instruction families; individual stretch entries have their own setup and execution notes. These are administrator-only drafts, not professionally approved instructions. Existing custom catalog records are preserved. See [Training Pro](docs/TRAINING-PRO.md).
+
 **NEVER TRAIN ALONE.** Standalone fitness social web app. This is a local release candidate, not a public deployment. All development and tests are local; no Supabase, external analytics, CDN, API keys, or paid services. Production configuration is intentionally blocked until the operator configures it. See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 
 ## تشغيل المشروع محليًا

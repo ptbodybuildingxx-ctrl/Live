@@ -55,6 +55,8 @@ Exercise catalog (150 entries, four equipment families, three languages), advanc
 
 200 catalog entries (175 resistance/cardio and 25 stretch/mobility), built-in pagination, and capacity for 2,000 entries. Administrators can edit translated instructions, common mistakes and safety notes, upload or replace two images and a short video with rights metadata, and move a complete draft into review and publication after confirming specialist sign-off. Media stays local, authenticated and hidden until publication. Actual instructional assets and review are still outstanding. No external publishing service or production rollout. See [Training Pro](TRAINING-PRO.md).
 
+All 200 built-in entries now have administrator-visible original editorial instruction drafts in Arabic, English and Swedish, with technique, common mistakes and safety notes. Drafts remain hidden until the full review and publication requirements are met; actual media and professional review remain open.
+
 ## MVP scope and rules
 
 The MVP prioritizes identity, security, core training/nutrition/habits and coach directory. Existing social features remain available locally. All other modules are developed and released gradually; scaffolding is not a claim of completion. The public version requires a secure server and validated production configuration. Only free-tier infrastructure is targeted initially; operating costs depend on actual usage and service limits. No live external database, real payments or production deployment are authorized by this sprint.

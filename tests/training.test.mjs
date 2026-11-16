@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createApp,demoPassword,newTestPassword} from './local-fixtures.mjs';
 import {seedExercises,equipment,muscles,patterns,levels,alternatives} from '../dist/core/exercise-catalog.js';
+import {exerciseDraft} from '../exercise-instructions.mjs';
 import {trainingPage,trainingUI,trainingPayload,resetTrainingUI} from '../dist/core/training-ui.js';
 import {groupTypes} from '../training.mjs';
 import {tr,langs} from '../dist/i18n.js';
@@ -38,6 +39,14 @@ test('catalog supports more than 1,000 entries with a paged browser view',async(
   db.prepare('UPDATE state SET data=? WHERE id=1').run(JSON.stringify(s));
   const state=(await view(admin)).data;assert.equal(state.training.catalog.length,1100);
   resetTrainingUI();const h=v=>String(v??'');const html=trainingPage({state,t:k=>tr(k,'en'),h,btn:(x,a,attrs)=>`<button data-action="${a}" ${attrs}>${x}</button>`,lang:'en'});assert.match(html,/1100 \/ 1100/);assert.equal((html.match(/<article class="card stack">/g)||[]).length,24);
+}));
+
+test('all 200 original starter drafts contain localized technique, mistakes and safety notes without publishing',async()=>withApp(async({login,view,train})=>{
+  const [admin,a]=await Promise.all(['admin','athlete'].map(login));const draftRows=(await view(admin)).data.training.catalog;
+  assert.equal(draftRows.length,200);for(const row of draftRows){assert.equal(row.content.origin,'starterDraft');assert.equal(row.content.status,'draft');assert.deepEqual(row.content.assets,{});assert.equal(row.media,null);for(const l of langs)for(const field of [row.notes,row.content.mistakes,row.content.safety])assert(field[l].length>20&&field[l].length<=1000);assert.deepEqual(row.notes,exerciseDraft(seedExercises.find(x=>x.id===row.id)).notes)}
+  for(const row of (await view(a)).data.training.catalog){assert.equal(row.notes.en,'');assert.equal(row.content.origin,undefined);assert.equal(row.content.safety,undefined)}
+  assert.equal((await train(admin,'contentSubmit',{id:'push-up'})).status,400);
+  assert.notEqual(draftRows.find(x=>x.id==='wall-calf-stretch').notes.en,draftRows.find(x=>x.id==='standing-quad-stretch').notes.en);
 }));
 
 test('catalog management is administrator-only and browser modules are served',async()=>withApp(async({login,train,view,base})=>{

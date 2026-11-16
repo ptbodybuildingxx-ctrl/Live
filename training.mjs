@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {activeContext,can} from './identity.mjs';
 import {seedExercises,equipment,muscles,patterns,levels,secondaryGroups,alternatives} from './dist/core/exercise-catalog.js';
+import {exerciseDraft} from './exercise-instructions.mjs';
 
 export const groupTypes=['standard','drop','superset','triset','giant','circuit','restPause','pyramid','cluster','tempo','amrap','custom'];
 const FAIL=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
@@ -23,8 +24,9 @@ const coachLink=(s,id,l)=>coach(s,id)&&l?.coach===id&&activeLink(s,l);
 const planLink=(s,p)=>links(s).find(l=>l.id===p.linkId&&l.member===p.owner&&l.coach===p.author);
 const mayEdit=(s,id,p)=>own(s,id)&&(p.owner===id||coachLink(s,id,planLink(s,p)));
 const day=()=>new Date().toISOString().slice(0,10);
-const seedIds=new Set(seedExercises.map(r=>r.id));
-const catalog=s=>{const edits=new Map(view(s).catalog.map(r=>[r.id,r]));return [...seedExercises.map(r=>edits.get(r.id)||r),...view(s).catalog.filter(r=>!seedIds.has(r.id))]};
+const seededDrafts=seedExercises.map(exerciseDraft);
+const seedIds=new Set(seededDrafts.map(r=>r.id));
+const catalog=s=>{const edits=new Map(view(s).catalog.map(r=>[r.id,r]));return [...seededDrafts.map(r=>edits.get(r.id)||r),...view(s).catalog.filter(r=>!seedIds.has(r.id))]};
 const publicPlan=({owner,author,...p})=>({...p,assigned:!!p.linkId});
 const audit=(s,id,operation,target)=>{const a=store(s).audit;a.unshift({id:randomUUID(),actor:id,operation,target,at:Date.now()});a.splice(1000)};
 function localized(value,max,optional=false){need(value&&typeof value==='object'&&!Array.isArray(value),'Translations required');return Object.fromEntries(['ar','en','sv'].map(l=>[l,text(value[l],max,optional)]))}
@@ -144,8 +146,8 @@ export function trainingAction(s,id,b){
     if(op==='catalogCreate'){need(catalog(s).length<2000,'Catalog limit',429);const row={id:randomUUID(),...catalogBody(b),archived:false,content:{...contentOf({}),...fields(b)}};d.catalog.push(row);audit(s,id,op,row.id);return}
     const row=catalog(s).find(r=>r.id===b.id);need(row,'Exercise not found',404);
     const content=contentOf(row);let update;
-    if(op==='catalogUpdate')update={...row,...catalogBody(b),content:{...content,...fields(b),status:'draft',reviewedAt:null}};
-    else if(op==='contentSubmit'){need(content.status==='draft'&&!row.archived,'Draft required',409);need(row.media?.rights&&row.media?.reference&&mediaSlots.every(slot=>content.assets[slot])&&['ar','en','sv'].every(l=>row.notes[l]&&content.mistakes[l]&&content.safety[l]),'Complete reviewed content, rights and media required');update={...row,content:{...content,status:'review'}}}
+    if(op==='catalogUpdate')update={...row,...catalogBody(b),content:{...content,...fields(b),origin:'editor',status:'draft',reviewedAt:null}};
+    else if(op==='contentSubmit'){need(content.status==='draft'&&!row.archived,'Draft required',409);need(content.origin!=='starterDraft','Review and save the starter instructions before submitting');need(row.media?.rights&&row.media?.reference&&mediaSlots.every(slot=>content.assets[slot])&&['ar','en','sv'].every(l=>row.notes[l]&&content.mistakes[l]&&content.safety[l]),'Complete reviewed content, rights and media required');update={...row,content:{...content,status:'review'}}}
     else if(op==='contentPublish'){need(content.status==='review'&&!row.archived&&b.confirm===true,'Specialist review confirmation required',403);update={...row,content:{...content,status:'published',reviewedAt:Date.now()}}}
     else if(op==='contentReturn'){update={...row,content:{...content,status:'draft',reviewedAt:null}}}
     else update={...row,archived:op==='catalogArchive'};

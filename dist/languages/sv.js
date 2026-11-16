@@ -1,4 +1,5 @@
 export default {
+  "train_starterDraft": "Redaktionellt utkast – ej specialistgranskat. Kontrollera just denna övning och alla tre översättningar, redigera och spara före granskning.",
   "train_stretch": "Stretch och rörlighet",
   "train_staticStretch": "Statisk stretch",
   "train_dynamicStretch": "Dynamisk stretch",

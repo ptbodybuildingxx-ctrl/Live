@@ -1,4 +1,5 @@
 export default {
+  "train_starterDraft": "مسودة تحريرية أولية غير معتمدة من مختص. راجع هذا التمرين وترجماته الثلاث ثم عدّل واحفظ قبل الإرسال للمراجعة.",
   "train_stretch": "الإطالة والمرونة",
   "train_staticStretch": "إطالة ثابتة",
   "train_dynamicStretch": "إطالة ديناميكية",
